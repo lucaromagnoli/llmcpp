@@ -19,6 +19,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup CMake and Ninja
+      uses: lukka/get-cmake@latest
+      with:
+        cmakeVersion: 'latest'
+        ninjaVersion: 'latest'
+
     - name: Disable pre-commit hook
       run: |
         if [ -f .git/hooks/pre-commit ]; then
@@ -31,24 +37,24 @@ jobs:
       timeout-minutes: 5
       run: |
         sudo apt-get update
-        sudo apt-get install -y gcc g++ libssl-dev ninja-build
+        sudo apt-get install -y gcc g++ libssl-dev
 
     - name: Setup C++ (macOS)
       if: matrix.os == 'macos-12'
-      timeout-minutes: 10
+      timeout-minutes: 5
       run: |
-        echo "Installing dependencies with brew..."
-        brew update
-        brew install ninja openssl
+        echo "Installing OpenSSL..."
+        brew list openssl || brew install openssl
         echo "Setting OpenSSL environment variables..."
         echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl)" >> $GITHUB_ENV
         echo "PKG_CONFIG_PATH=$(brew --prefix openssl)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+        echo "Setup complete"
 
     - name: Setup C++ (Windows)
       if: matrix.os == 'windows-2022'
       timeout-minutes: 10
       run: |
-        choco install ninja openssl
+        choco install openssl
         echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
 
     - name: Configure CMake
