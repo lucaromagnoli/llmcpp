@@ -1,5 +1,6 @@
 #include "core/ClientManager.h"
 
+#include <algorithm>
 #include <mutex>
 
 bool ClientManager::addClient(const std::string& name, std::unique_ptr<LLMClient> client) {
@@ -47,9 +48,8 @@ std::vector<std::string> ClientManager::getClientNames() const {
     std::vector<std::string> names;
     names.reserve(clients_.size());
 
-    for (const auto& pair : clients_) {
-        names.push_back(pair.first);
-    }
+    std::transform(clients_.begin(), clients_.end(), std::back_inserter(names),
+                   [](const auto& pair) { return pair.first; });
 
     return names;
 }

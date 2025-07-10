@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <unordered_map>
@@ -170,9 +171,8 @@ struct ResponsesInput {
             return textInput;
         } else {
             json messageArray = json::array();
-            for (const auto& message : contentList) {
-                messageArray.push_back(message.toJson());
-            }
+            std::transform(contentList.begin(), contentList.end(), std::back_inserter(messageArray),
+                           [](const InputMessage& message) { return message.toJson(); });
             return messageArray;
         }
     }
@@ -182,9 +182,8 @@ struct ResponsesInput {
             return fromText(j.get<std::string>());
         } else if (j.is_array()) {
             std::vector<InputMessage> messages;
-            for (const auto& item : j) {
-                messages.push_back(InputMessage::fromJson(item));
-            }
+            std::transform(j.begin(), j.end(), std::back_inserter(messages),
+                           [](const json& item) { return InputMessage::fromJson(item); });
             return fromContentList(messages);
         }
         throw std::invalid_argument("Invalid ResponsesInput format");
@@ -800,6 +799,8 @@ inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& reque
     ResponsesRequest responsesReq;
     responsesReq.model = request.config.model;
     responsesReq.input = ResponsesInput::fromText(request.prompt);
+    responsesReq.toolChoice =
+        ToolChoiceMode::Auto;  // Explicitly initialize to fix cppcheck warning
     if (request.config.maxTokens > 0) {
         responsesReq.maxOutputTokens = request.config.maxTokens;
     }
@@ -944,10 +945,12 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
         auto functionCalls = getFunctionCalls();
         if (!functionCalls.empty()) {
             json calls = json::array();
-            for (const auto& call : functionCalls) {
-                calls.push_back(
-                    {{"id", call.id}, {"name", call.name}, {"arguments", call.arguments}});
-            }
+            std::transform(functionCalls.begin(), functionCalls.end(), std::back_inserter(calls),
+                           [](const FunctionCall& call) {
+                               return json{{"id", call.id},
+                                           {"name", call.name},
+                                           {"arguments", call.arguments}};
+                           });
             llmResp.result["function_calls"] = calls;
         }
 
@@ -975,10 +978,11 @@ inline std::string ResponsesResponse::getOutputText() const {
     for (const auto& item : output) {
         if (std::holds_alternative<OutputMessage>(item)) {
             const auto& msg = std::get<OutputMessage>(item);
-            for (const auto& content : msg.content) {
-                if (content.contains("text") && content["type"] == "output_text") {
-                    return content["text"].get<std::string>();
-                }
+            auto it = std::find_if(msg.content.begin(), msg.content.end(), [](const json& content) {
+                return content.contains("text") && content["type"] == "output_text";
+            });
+            if (it != msg.content.end()) {
+                return (*it)["text"].get<std::string>();
             }
         }
     }
@@ -1104,10 +1108,10 @@ inline ApiType detectApiType(const LLMRequest& request) {
     const std::string& model = request.config.model;
 
     // Check if it's a Responses API model
-    for (const auto& responsesModel : RESPONSES_MODELS) {
-        if (model == responsesModel) {
-            return ApiType::RESPONSES;
-        }
+    if (std::any_of(
+            RESPONSES_MODELS.begin(), RESPONSES_MODELS.end(),
+            [&model](const std::string& responsesModel) { return model == responsesModel; })) {
+        return ApiType::RESPONSES;
     }
 
     // Default to Chat Completions for most models
@@ -1115,21 +1119,14 @@ inline ApiType detectApiType(const LLMRequest& request) {
 }
 
 inline bool supportsResponses(const std::string& model) {
-    for (const auto& responsesModel : RESPONSES_MODELS) {
-        if (model == responsesModel) {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(
+        RESPONSES_MODELS.begin(), RESPONSES_MODELS.end(),
+        [&model](const std::string& responsesModel) { return model == responsesModel; });
 }
 
 inline bool supportsChatCompletions(const std::string& model) {
-    for (const auto& chatModel : CHAT_COMPLETION_MODELS) {
-        if (model == chatModel) {
-            return true;
-        }
-    }
-    return false;
+    return std::any_of(CHAT_COMPLETION_MODELS.begin(), CHAT_COMPLETION_MODELS.end(),
+                       [&model](const std::string& chatModel) { return model == chatModel; });
 }
 
 inline std::string getRecommendedApiForModel(const std::string& model) {
