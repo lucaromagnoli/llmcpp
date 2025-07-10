@@ -1,7 +1,8 @@
 #pragma once
-#include "openai/OpenAITypes.h"
-#include <vector>
 #include <string>
+#include <vector>
+
+#include "openai/OpenAITypes.h"
 
 namespace OpenAI {
 
@@ -10,4 +11,4 @@ namespace OpenAI {
  */
 std::vector<std::string> getAllModels();
 
-} // namespace OpenAI 
+}  // namespace OpenAI

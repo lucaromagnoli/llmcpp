@@ -1,9 +1,9 @@
 #include "openai/OpenAIResponsesApi.h"
+
 #include <stdexcept>
 
 OpenAIResponsesApi::OpenAIResponsesApi(std::shared_ptr<OpenAIHttpClient> httpClient)
-    : httpClient_(std::move(httpClient)) {
-}
+    : httpClient_(std::move(httpClient)) {}
 
 // Core Responses API methods
 OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequest& request) {
@@ -19,8 +19,7 @@ std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createAsync(
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createStreaming(
-    const OpenAI::ResponsesRequest& request,
-    std::function<void(const std::string&)> streamCallback,
+    const OpenAI::ResponsesRequest& request, std::function<void(const std::string&)> streamCallback,
     std::function<void(const OpenAI::ResponsesResponse&)> finalCallback) {
     // TODO: Implement streaming API call
     throw std::runtime_error("OpenAIResponsesApi::createStreaming not yet implemented");
@@ -42,9 +41,8 @@ bool OpenAIResponsesApi::deleteResponse(const std::string& responseId) {
     throw std::runtime_error("OpenAIResponsesApi::deleteResponse not yet implemented");
 }
 
-json OpenAIResponsesApi::listInputItems(const std::string& responseId, 
-                                       const std::string& after,
-                                       int limit) {
+json OpenAIResponsesApi::listInputItems(const std::string& responseId, const std::string& after,
+                                        int limit) {
     // TODO: Implement list input items
     throw std::runtime_error("OpenAIResponsesApi::listInputItems not yet implemented");
 }
@@ -56,16 +54,15 @@ bool OpenAIResponsesApi::isProcessing(const std::string& responseId) {
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::waitForCompletion(const std::string& responseId,
-                                                              int timeoutSeconds,
-                                                              int pollIntervalSeconds) {
+                                                                int timeoutSeconds,
+                                                                int pollIntervalSeconds) {
     // TODO: Implement wait for completion
     throw std::runtime_error("OpenAIResponsesApi::waitForCompletion not yet implemented");
 }
 
 // Streaming helpers
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::resumeStreaming(
-    const std::string& responseId,
-    int startingAfter,
+    const std::string& responseId, int startingAfter,
     std::function<void(const std::string&)> streamCallback) {
     // TODO: Implement resume streaming
     throw std::runtime_error("OpenAIResponsesApi::resumeStreaming not yet implemented");
@@ -73,16 +70,14 @@ std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::resumeStreaming(
 
 // Conversation management
 OpenAI::ResponsesResponse OpenAIResponsesApi::continueConversation(
-    const std::string& previousResponseId,
-    const OpenAI::ResponsesInput& newInput,
+    const std::string& previousResponseId, const OpenAI::ResponsesInput& newInput,
     const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
     // TODO: Implement continue conversation
     throw std::runtime_error("OpenAIResponsesApi::continueConversation not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::forkConversation(
-    const std::string& forkFromResponseId,
-    const OpenAI::ResponsesInput& newInput,
+    const std::string& forkFromResponseId, const OpenAI::ResponsesInput& newInput,
     const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
     // TODO: Implement fork conversation
     throw std::runtime_error("OpenAIResponsesApi::forkConversation not yet implemented");
@@ -90,23 +85,20 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::forkConversation(
 
 // Tool and approval management
 OpenAI::ResponsesResponse OpenAIResponsesApi::approveMcpRequest(
-    const std::string& responseId,
-    const std::string& approvalRequestId,
-    bool approve) {
+    const std::string& responseId, const std::string& approvalRequestId, bool approve) {
     // TODO: Implement MCP approval
     throw std::runtime_error("OpenAIResponsesApi::approveMcpRequest not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::submitFunctionOutputs(
-    const std::string& responseId,
-    const std::vector<OpenAI::FunctionCallOutput>& outputs) {
+    const std::string& responseId, const std::vector<OpenAI::FunctionCallOutput>& outputs) {
     // TODO: Implement function output submission
     throw std::runtime_error("OpenAIResponsesApi::submitFunctionOutputs not yet implemented");
 }
 
 // Configuration and validation
-bool OpenAIResponsesApi::validateRequest(const OpenAI::ResponsesRequest& request, 
-                                        std::string& errorMessage) const {
+bool OpenAIResponsesApi::validateRequest(const OpenAI::ResponsesRequest& request,
+                                         std::string& errorMessage) const {
     // TODO: Implement validation
     errorMessage = "Validation not yet implemented";
     return false;
@@ -118,8 +110,7 @@ std::vector<std::string> OpenAIResponsesApi::getSupportedModels() const {
 
 bool OpenAIResponsesApi::supportsBackgroundProcessing(const std::string& model) const {
     // Most reasoning models support background processing
-    return model.find("o1") != std::string::npos || 
-           model.find("o3") != std::string::npos || 
+    return model.find("o1") != std::string::npos || model.find("o3") != std::string::npos ||
            model.find("o4") != std::string::npos;
 }
 
@@ -130,10 +121,8 @@ bool OpenAIResponsesApi::supportsStreaming(const std::string& model) const {
 
 bool OpenAIResponsesApi::supportsTools(const std::string& model) const {
     // Most modern models support tools
-    return model.find("gpt-4") != std::string::npos || 
-           model.find("o1") != std::string::npos ||
-           model.find("o3") != std::string::npos ||
-           model.find("o4") != std::string::npos;
+    return model.find("gpt-4") != std::string::npos || model.find("o1") != std::string::npos ||
+           model.find("o3") != std::string::npos || model.find("o4") != std::string::npos;
 }
 
 bool OpenAIResponsesApi::supportsImageGeneration(const std::string& model) const {
@@ -152,15 +141,12 @@ bool OpenAIResponsesApi::supportsWebSearch(const std::string& model) const {
 
 bool OpenAIResponsesApi::supportsMcp(const std::string& model) const {
     // MCP is supported by newer models
-    return model.find("gpt-4.1") != std::string::npos ||
-           model.find("o3") != std::string::npos ||
+    return model.find("gpt-4.1") != std::string::npos || model.find("o3") != std::string::npos ||
            model.find("o4") != std::string::npos;
 }
 
 // Private helper methods (stubs)
-std::string OpenAIResponsesApi::buildCreateUrl() const {
-    return "/v1/responses";
-}
+std::string OpenAIResponsesApi::buildCreateUrl() const { return "/v1/responses"; }
 
 std::string OpenAIResponsesApi::buildRetrieveUrl(const std::string& responseId) const {
     return "/v1/responses/" + responseId;
@@ -178,8 +164,8 @@ std::string OpenAIResponsesApi::buildInputItemsUrl(const std::string& responseId
     return "/v1/responses/" + responseId + "/input_items";
 }
 
-void OpenAIResponsesApi::processStreamEvent(const std::string& event, 
-                                          std::function<void(const std::string&)> streamCallback) {
+void OpenAIResponsesApi::processStreamEvent(
+    const std::string& event, std::function<void(const std::string&)> streamCallback) {
     // TODO: Implement stream event processing
 }
 
@@ -214,8 +200,8 @@ void OpenAIResponsesApi::extractConvenienceFields(OpenAI::ResponsesResponse& res
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::pollForCompletion(const std::string& responseId,
-                                                              int maxAttempts,
-                                                              int intervalSeconds) {
+                                                                int maxAttempts,
+                                                                int intervalSeconds) {
     // TODO: Implement polling
     throw std::runtime_error("OpenAIResponsesApi::pollForCompletion not yet implemented");
-} 
+}
