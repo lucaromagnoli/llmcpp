@@ -123,6 +123,30 @@ Dependencies are automatically fetched via CMake FetchContent:
 
 ### Build Options
 
+#### Using Make (Recommended)
+
+```bash
+# Quick start - build and test
+make quick
+
+# Build in release mode (default)
+make
+
+# Build with tests and examples
+make all-features test
+
+# Show all available targets
+make help
+
+# Development workflow
+make dev                    # Build debug + examples + tests
+make format                 # Format code
+make lint                   # Run static analysis
+make clean                  # Clean build
+```
+
+#### Using CMake Directly
+
 ```bash
 # Create build directory
 mkdir build && cd build
@@ -212,13 +236,21 @@ This library is open source and contributions are welcome!
 ```bash
 # Clone with submodules
 git clone --recursive https://github.com/lucaromagnoli/llmcpp.git
+cd llmcpp
 
-# Build with tests
+# Quick development setup
+make dev                     # Build debug + examples + tests
+
+# Development workflow
+make quick                   # Build and test
+make format                  # Format code
+make lint                    # Static analysis
+make coverage                # Generate coverage report
+
+# Alternative: Using CMake directly
 mkdir build && cd build
 cmake .. -DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON
 cmake --build .
-
-# Run tests
 ctest
 ```
 

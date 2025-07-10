@@ -8,7 +8,8 @@ out/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+build/Makefile
+cmake-build-*/Makefile
 
 # Generated files
 *.o
