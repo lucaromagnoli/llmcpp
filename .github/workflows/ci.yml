@@ -12,18 +12,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-12]
+        os: [ubuntu-22.04, macos-latest]
         build_type: [Release]
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup CMake and Ninja
-      uses: lukka/get-cmake@latest
-      with:
-        cmakeVersion: 'latest'
-        ninjaVersion: 'latest'
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: brew install cmake ninja
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc g++ cmake ninja-build libssl-dev
 
     - name: Disable pre-commit hook
       run: |
@@ -31,31 +35,6 @@ jobs:
           mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
         fi
       shell: bash
-
-    - name: Setup C++ (Linux)
-      if: matrix.os == 'ubuntu-22.04'
-      timeout-minutes: 5
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc g++ libssl-dev
-
-    - name: Setup C++ (macOS)
-      if: matrix.os == 'macos-12'
-      timeout-minutes: 5
-      run: |
-        echo "Installing OpenSSL..."
-        brew list openssl || brew install openssl
-        echo "Setting OpenSSL environment variables..."
-        echo "OPENSSL_ROOT_DIR=$(brew --prefix openssl)" >> $GITHUB_ENV
-        echo "PKG_CONFIG_PATH=$(brew --prefix openssl)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
-        echo "Setup complete"
-
-    - name: Setup C++ (Windows)
-      if: matrix.os == 'windows-2022'
-      timeout-minutes: 10
-      run: |
-        choco install openssl
-        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
 
     - name: Configure CMake
       timeout-minutes: 5
