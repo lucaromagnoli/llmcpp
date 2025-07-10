@@ -31,7 +31,9 @@ jobs:
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
-      run: choco install cmake ninja
+      run: |
+        choco install cmake ninja
+        refreshenv
 
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
@@ -46,13 +48,17 @@ jobs:
         fi
       shell: bash
 
-    - name: Configure CMake
+    - name: Configure CMake (Windows)
+      if: matrix.os == 'windows-latest'
       timeout-minutes: 5
-      run: >
-        cmake -B build -G Ninja
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DLLMCPP_BUILD_TESTS=ON
-        ${{ matrix.os == 'windows-latest' && '-DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake' || '' }}
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+
+    - name: Configure CMake (Non-Windows)
+      if: matrix.os != 'windows-latest'
+      timeout-minutes: 5
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON
 
     - name: Build
       timeout-minutes: 15
