@@ -1,8 +1,9 @@
 #pragma once
-#include "core/LLMClient.h"
 #include <memory>
-#include <string>
 #include <nlohmann/json.hpp>
+#include <string>
+
+#include "core/LLMClient.h"
 
 using json = nlohmann::json;
 
@@ -12,8 +13,8 @@ namespace llmcpp {
  * Factory for creating LLM clients
  */
 class ClientFactory {
-public:
+   public:
     static std::unique_ptr<LLMClient> createClient(const std::string& provider, const json& config);
 };
 
-} // namespace llmcpp 
+}  // namespace llmcpp
