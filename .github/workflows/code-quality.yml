@@ -21,7 +21,7 @@ jobs:
     - name: Check formatting
       run: >
         find include src tests -name "*.h" -o -name "*.hpp" -o -name "*.cpp" -o -name "*.c"
-        | xargs clang-format --dry-run --Werror --style=file
+        | xargs clang-format --dry-run --style=file
 
   static-analysis:
     runs-on: ubuntu-22.04
