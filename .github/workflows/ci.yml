@@ -36,13 +36,14 @@ jobs:
         cmake: true
         ninja: true
 
-    - name: Setup vcpkg (Windows)
+    - name: Install OpenSSL (Windows)
       if: matrix.os == 'windows-latest'
-      uses: lukka/run-vcpkg@v11
-      with:
-        vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'
-        runVcpkgInstall: true
-        vcpkgJsonGlob: '**/vcpkg.json'
+      run: |
+        choco install openssl
+        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
+        echo "OPENSSL_CRYPTO_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libcrypto.lib" >> $env:GITHUB_ENV
+        echo "OPENSSL_SSL_LIBRARY=C:\Program Files\OpenSSL-Win64\lib\libssl.lib" >> $env:GITHUB_ENV
 
     - name: Disable pre-commit hook
       run: |
@@ -54,7 +55,7 @@ jobs:
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON
 
     - name: Configure CMake (Non-Windows)
       if: matrix.os != 'windows-latest'
