@@ -2,6 +2,30 @@
 #include "openai/OpenAIResponsesApi.h"
 #include <stdexcept>
 
+// TODO: When implementing these classes, include their headers here:
+// #include "openai/OpenAIChatCompletionsApi.h"
+// #include "openai/OpenAICompletionsApi.h" 
+// #include "openai/OpenAIHttpClient.h"
+
+// For now, create minimal stub classes to make unique_ptr work
+class OpenAIChatCompletionsApi {
+public:
+    OpenAIChatCompletionsApi() = default;
+    virtual ~OpenAIChatCompletionsApi() = default;
+};
+
+class OpenAICompletionsApi {
+public:
+    OpenAICompletionsApi() = default;
+    virtual ~OpenAICompletionsApi() = default;
+};
+
+class OpenAIHttpClient {
+public:
+    OpenAIHttpClient() = default;
+    virtual ~OpenAIHttpClient() = default;
+};
+
 OpenAIClient::OpenAIClient(const std::string& apiKey)
     : config_{apiKey, "https://api.openai.com/v1"} {
     initializeApiHandlers();
@@ -12,14 +36,15 @@ OpenAIClient::OpenAIClient(const OpenAI::OpenAIConfig& config)
     initializeApiHandlers();
 }
 
-// Destructor implementation needed for unique_ptr with incomplete types
-OpenAIClient::~OpenAIClient() {
-    // Clean up raw pointers (when they are actually implemented)
-    delete chatCompletionsApi_;
-    delete completionsApi_;
-    delete httpClient_;
-    // responsesApi_ is handled by unique_ptr automatically
-}
+// Destructor implementation - can handle unique_ptr destruction here
+// because complete types are available (either from includes or stubs above)
+OpenAIClient::~OpenAIClient() = default;
+
+// Move constructor
+OpenAIClient::OpenAIClient(OpenAIClient&& other) noexcept = default;
+
+// Move assignment
+OpenAIClient& OpenAIClient::operator=(OpenAIClient&& other) noexcept = default;
 
 // LLMClient interface implementation
 void OpenAIClient::sendRequest(const LLMRequest& request, LLMResponseCallback callback) {
@@ -151,12 +176,11 @@ OpenAI::ApiType OpenAIClient::getPreferredApiType() const {
 
 // Private methods (stubs)
 void OpenAIClient::initializeApiHandlers() {
-    // TODO: Initialize actual API handlers when they are implemented
+    // Now we can properly create unique_ptr instances because complete types are available
     responsesApi_ = std::make_unique<OpenAIResponsesApi>(nullptr);
-    // chatCompletionsApi_ and completionsApi_ will be initialized as nullptr for now
-    chatCompletionsApi_ = nullptr;
-    completionsApi_ = nullptr;
-    httpClient_ = nullptr;
+    chatCompletionsApi_ = std::make_unique<OpenAIChatCompletionsApi>();
+    completionsApi_ = std::make_unique<OpenAICompletionsApi>();
+    httpClient_ = std::make_unique<OpenAIHttpClient>();
 }
 
 LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {

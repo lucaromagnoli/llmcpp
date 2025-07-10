@@ -20,7 +20,18 @@ class OpenAIClient : public LLMClient {
 public:
     explicit OpenAIClient(const std::string& apiKey = "");
     explicit OpenAIClient(const OpenAI::OpenAIConfig& config);
-    ~OpenAIClient(); // Need explicit destructor for unique_ptr with incomplete types
+    
+    // Destructor MUST be declared in header for Pimpl idiom
+    // Implementation goes in .cpp where complete types are available
+    ~OpenAIClient();
+    
+    // Move constructor and assignment (Rule of 5 for Pimpl)
+    OpenAIClient(OpenAIClient&& other) noexcept;
+    OpenAIClient& operator=(OpenAIClient&& other) noexcept;
+    
+    // Delete copy operations (unique ownership)
+    OpenAIClient(const OpenAIClient&) = delete;
+    OpenAIClient& operator=(const OpenAIClient&) = delete;
     
     /**
      * LLMClient interface implementation
@@ -111,12 +122,13 @@ public:
     
 private:
     /**
-     * Internal API handlers
+     * Internal API handlers - using unique_ptr with Pimpl idiom
+     * Destruction handled in .cpp where complete types are available
      */
     std::unique_ptr<OpenAIResponsesApi> responsesApi_;
-    OpenAIChatCompletionsApi* chatCompletionsApi_;
-    OpenAICompletionsApi* completionsApi_;
-    OpenAIHttpClient* httpClient_;
+    std::unique_ptr<OpenAIChatCompletionsApi> chatCompletionsApi_;
+    std::unique_ptr<OpenAICompletionsApi> completionsApi_;
+    std::unique_ptr<OpenAIHttpClient> httpClient_;
     
     /**
      * Configuration
