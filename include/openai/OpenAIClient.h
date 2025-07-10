@@ -1,54 +1,32 @@
 #pragma once
-
-#include <juce_core/juce_core.h>
 #include "core/LLMClient.h"
-#include "OpenAIModels.h"
-#include "OpenAIUtils.h"
 
+/**
+ * OpenAI client implementation
+ * TODO: Implement full OpenAI API client
+ */
 class OpenAIClient : public LLMClient {
 public:
-    explicit OpenAIClient(const juce::String& apiKey, bool useResponsesAPI = true);
-
-    // LLMClient interface implementation
-    void sendRequest(const LLMRequest& request, LLMResponseCallback callback) override;
-    void sendStreamingRequest(const LLMRequest& request, 
-                            LLMResponseCallback onDone,
-                            LLMStreamCallback onChunk) override;
-    [[nodiscard]] juce::StringArray getAvailableModels() const override;
-    [[nodiscard]] bool supportsStreaming() const override { return true; }
-    [[nodiscard]] juce::String getClientName() const override { return "OpenAI"; }
-
-    // OpenAI-specific methods
-    static LLMResponse sendOpenAIRequest(const LLMRequest& request, 
-                                       const juce::String& apiKey, 
-                                       bool useResponsesAPI);
-
-    static juce::String buildChatCompletionRequest(const LLMRequest& request);
-    static juce::String buildResponsesRequest(const LLMRequest& request);
-    static juce::String buildPayload(const LLMRequest& request, bool useResponsesAPI);
+    explicit OpenAIClient(const std::string& apiKey = "");
     
-    static LLMResponse handleResponse(const juce::String& responseStr, bool useResponsesAPI);
-    static LLMResponse handleResponsesResponse(const juce::DynamicObject& obj);
-    static LLMResponse handleCompletionsResponse(const juce::DynamicObject& obj);
-
-    [[nodiscard]] bool isUsingResponsesAPI() const { return useResponsesAPI; }
-    void setUseResponsesAPI(bool useResponses);
-
-    void listModels(const std::function<void(const std::vector<juce::String>&)>& onSuccess,
-                   const std::function<void(const juce::String&)>& onError) const;
+    // LLMClient interface
+    LLMResponse sendRequest(const LLMRequest& request) override;
+    std::future<LLMResponse> sendRequestAsync(const LLMRequest& request,
+                                             LLMResponseCallback callback = nullptr) override;
+    std::future<LLMResponse> sendStreamingRequest(const LLMRequest& request,
+                                                 LLMStreamCallback streamCallback,
+                                                 LLMResponseCallback finalCallback = nullptr) override;
+    
+    void setApiKey(const std::string& apiKey) override;
+    std::string getApiKey() const override;
+    bool isConfigured() const override;
+    std::string getClientName() const override;
+    std::vector<std::string> getAvailableModels() const override;
+    bool isModelSupported(const std::string& modelName) const override;
+    void setClientConfig(const json& config) override;
+    json getClientConfig() const override;
 
 private:
-    juce::String apiKey;
-    bool useResponsesAPI = true;
-    
-    // Simple async request handling using JUCE's built-in threading
-    class SimpleAsyncRequest : public juce::Thread {
-    public:
-        SimpleAsyncRequest(std::function<LLMResponse()> work, LLMResponseCallback callback);
-        void run() override;
-        
-    private:
-        std::function<LLMResponse()> workFunction;
-        LLMResponseCallback responseCallback;
-    };
+    std::string apiKey_;
+    json clientConfig_;
 }; 

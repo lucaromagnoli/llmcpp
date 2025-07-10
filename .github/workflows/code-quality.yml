@@ -1,0 +1,182 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  format-check:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format-14
+
+    - name: Check formatting
+      run: |
+        find include src -name "*.h" -o -name "*.hpp" -o -name "*.cpp" -o -name "*.c" | \
+        xargs clang-format-14 --dry-run --Werror --style=file
+
+  static-analysis:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          clang-14 \
+          clang-tidy-14 \
+          cppcheck \
+          libssl-dev \
+          ninja-build
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=clang-14 \
+          -DCMAKE_CXX_COMPILER=clang++-14 \
+          -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+          -DLLMCPP_BUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Run clang-tidy
+      run: |
+        run-clang-tidy-14 -p build -header-filter=".*" \
+          -checks="-*,readability-*,performance-*,modernize-*,bugprone-*,clang-analyzer-*,cert-*,misc-*" \
+          include/ src/
+
+    - name: Run cppcheck
+      run: |
+        cppcheck --enable=all --inconclusive --inline-suppr \
+          --suppress=missingIncludeSystem \
+          --suppress=unmatchedSuppression \
+          --suppress=unusedFunction \
+          --error-exitcode=1 \
+          -I include/ \
+          src/ include/
+
+  security-scan:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: cpp
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libssl-dev ninja-build
+
+    - name: Build for CodeQL
+      run: |
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug -DLLMCPP_BUILD_TESTS=ON
+        cmake --build build
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+
+  license-check:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check license headers
+      run: |
+        # Check that all source files have license headers
+        find include src -name "*.h" -o -name "*.hpp" -o -name "*.cpp" | while read file; do
+          if ! grep -q "Copyright" "$file"; then
+            echo "Missing license header in $file"
+            exit 1
+          fi
+        done
+
+  dependency-check:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DLLMCPP_BUILD_TESTS=ON
+
+    - name: Check for dependency vulnerabilities
+      run: |
+        # Check that dependencies are being fetched correctly
+        cmake --build build --target help | grep -E "(nlohmann_json|httplib)"
+        
+        # Verify we're using recent versions (basic check)
+        grep -E "GIT_TAG|VERSION" CMakeLists.txt
+
+  coverage:
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-11 \
+          g++-11 \
+          lcov \
+          libssl-dev \
+          ninja-build
+
+    - name: Configure CMake with coverage
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Debug \
+          -DCMAKE_C_COMPILER=gcc-11 \
+          -DCMAKE_CXX_COMPILER=g++-11 \
+          -DCMAKE_CXX_FLAGS="--coverage" \
+          -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+          -DLLMCPP_BUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Run tests
+      working-directory: build
+      run: ctest --output-on-failure
+
+    - name: Generate coverage report
+      run: |
+        lcov --directory build --capture --output-file coverage.info
+        lcov --remove coverage.info '/usr/*' --output-file coverage.info
+        lcov --remove coverage.info '*/build/_deps/*' --output-file coverage.info
+        lcov --list coverage.info
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.info
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false 

@@ -1,0 +1,184 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-22.04
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get tag name
+      id: get_tag
+      run: echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Get previous tag
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+        
+        # Generate changelog
+        if [ -n "$PREVIOUS_TAG" ]; then
+          echo "## Changes since $PREVIOUS_TAG" > changelog.md
+          echo "" >> changelog.md
+          git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD >> changelog.md
+        else
+          echo "## Initial Release" > changelog.md
+          echo "" >> changelog.md
+          echo "First release of llmcpp - A modern C++20 library for LLM API integration." >> changelog.md
+        fi
+        
+        # Set output
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        cat changelog.md >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.get_tag.outputs.tag_name }}
+        release_name: Release ${{ steps.get_tag.outputs.tag_name }}
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: ${{ contains(steps.get_tag.outputs.tag_name, '-') }}
+
+  build-assets:
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-12, windows-2022]
+        include:
+          - os: ubuntu-22.04
+            asset_name: llmcpp-linux-x64
+            cmake_generator: "Ninja"
+            archive_cmd: "tar -czf"
+            archive_ext: ".tar.gz"
+          - os: macos-12
+            asset_name: llmcpp-macos-x64
+            cmake_generator: "Ninja"
+            archive_cmd: "tar -czf"
+            archive_ext: ".tar.gz"
+          - os: windows-2022
+            asset_name: llmcpp-windows-x64
+            cmake_generator: "Visual Studio 17 2022"
+            archive_cmd: "7z a"
+            archive_ext: ".zip"
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup dependencies (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential cmake libssl-dev ninja-build
+
+    - name: Setup dependencies (macOS)
+      if: matrix.os == 'macos-12'
+      run: |
+        brew install cmake ninja openssl
+
+    - name: Setup dependencies (Windows)
+      if: matrix.os == 'windows-2022'
+      run: |
+        choco install cmake ninja openssl
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -G "${{ matrix.cmake_generator }}" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=install \
+          -DLLMCPP_BUILD_EXAMPLES=ON \
+          -DLLMCPP_BUILD_TESTS=ON
+
+    - name: Build
+      run: cmake --build build --config Release
+
+    - name: Test
+      working-directory: build
+      run: ctest --output-on-failure -C Release
+
+    - name: Install
+      run: cmake --install build --config Release
+
+    - name: Create package (Linux/macOS)
+      if: matrix.os != 'windows-2022'
+      run: |
+        ${{ matrix.archive_cmd }} ${{ matrix.asset_name }}${{ matrix.archive_ext }} install/
+
+    - name: Create package (Windows)
+      if: matrix.os == 'windows-2022'
+      run: |
+        ${{ matrix.archive_cmd }} ${{ matrix.asset_name }}${{ matrix.archive_ext }} install\
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./${{ matrix.asset_name }}${{ matrix.archive_ext }}
+        asset_name: ${{ matrix.asset_name }}${{ matrix.archive_ext }}
+        asset_content_type: application/octet-stream
+
+  publish-package:
+    needs: [create-release, build-assets]
+    runs-on: ubuntu-22.04
+    if: ${{ !contains(needs.create-release.outputs.tag_name, '-') }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup CMake
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build libssl-dev
+
+    - name: Configure for packaging
+      run: |
+        cmake -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_INSTALL_PREFIX=/usr
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Create source package
+      run: |
+        # Create source archive
+        git archive --format=tar.gz \
+          --prefix=llmcpp-${{ needs.create-release.outputs.tag_name }}/ \
+          HEAD > llmcpp-${{ needs.create-release.outputs.tag_name }}-source.tar.gz
+
+    - name: Upload source package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./llmcpp-${{ needs.create-release.outputs.tag_name }}-source.tar.gz
+        asset_name: llmcpp-${{ needs.create-release.outputs.tag_name }}-source.tar.gz
+        asset_content_type: application/gzip
+
+    # Future: Add package registry publishing (vcpkg, conan, etc.)
+    - name: Placeholder for package publishing
+      run: |
+        echo "Future: Publish to package managers"
+        echo "- vcpkg"
+        echo "- Conan"
+        echo "- CPM" 
