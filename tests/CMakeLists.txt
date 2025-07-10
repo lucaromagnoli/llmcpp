@@ -16,6 +16,7 @@ FetchContent_MakeAvailable(doctest)
 add_executable(llmcpp_tests
     test_types.cpp
     test_client.cpp
+    test_openai_types.cpp
 )
 
 # Link against the library and test framework
