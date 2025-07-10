@@ -29,11 +29,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y gcc g++ cmake ninja-build libssl-dev
 
-    - name: Install dependencies (Windows)
+    - name: Setup C++ Environment (Windows)
       if: matrix.os == 'windows-latest'
-      run: |
-        choco install cmake ninja
-        refreshenv
+      uses: aminya/setup-cpp@v1
+      with:
+        cmake: true
+        ninja: true
 
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
