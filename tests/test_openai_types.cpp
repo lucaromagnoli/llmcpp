@@ -317,38 +317,6 @@ TEST_CASE("OpenAI::ChatCompletionChoice deserialization", "[openai][types]") {
     REQUIRE(choice.finishReason == "stop");
 }
 
-TEST_CASE("OpenAI::CompletionRequest serialization", "[openai][types]") {
-    CompletionRequest request;
-    request.model = "text-davinci-003";
-    request.prompt = "Once upon a time";
-    request.maxTokens = 50;
-    request.temperature = 0.8;
-    request.stop = std::vector<std::string>{"\n", "."};
-
-    json j = request.toJson();
-
-    REQUIRE(j["model"] == "text-davinci-003");
-    REQUIRE(j["prompt"] == "Once upon a time");
-    REQUIRE(j["max_tokens"] == 50);
-    REQUIRE(j["temperature"] == Catch::Approx(0.8));
-    REQUIRE(j["stop"].is_array());
-    REQUIRE(j["stop"].size() == 2);
-}
-
-TEST_CASE("OpenAI::CompletionChoice deserialization", "[openai][types]") {
-    json j = json::parse(R"({
-        "text": ", there was a kingdom",
-        "index": 0,
-        "finish_reason": "length"
-    })");
-
-    CompletionChoice choice = CompletionChoice::fromJson(j);
-
-    REQUIRE(choice.text == ", there was a kingdom");
-    REQUIRE(choice.index == 0);
-    REQUIRE(choice.finishReason == "length");
-}
-
 TEST_CASE("OpenAI::OpenAIConfig serialization", "[openai][types]") {
     OpenAIConfig config;
     config.apiKey = "sk-test123";
@@ -400,12 +368,11 @@ TEST_CASE("OpenAI::ApiType enum values", "[openai][types]") {
     // Test that enum values are properly defined
     ApiType responses = ApiType::RESPONSES;
     ApiType chat = ApiType::CHAT_COMPLETIONS;
-    ApiType completions = ApiType::COMPLETIONS;
     ApiType autoDetect = ApiType::AUTO_DETECT;
 
     REQUIRE(responses != chat);
-    REQUIRE(chat != completions);
-    REQUIRE(completions != autoDetect);
+    REQUIRE(chat != autoDetect);
+    REQUIRE(responses != autoDetect);
 }
 
 // Integration test combining multiple types
@@ -513,10 +480,6 @@ TEST_CASE("OpenAI::Error handling in type conversions", "[openai][types]") {
     // Test ChatMessage with incomplete JSON
     json incompleteJson = json::parse(R"({"role": "user"})");
     REQUIRE_THROWS_AS(ChatMessage::fromJson(incompleteJson), json::exception);
-
-    // Test CompletionChoice with incomplete JSON
-    json incompleteChoice = json::parse(R"({"index": 0})");
-    REQUIRE_THROWS_AS(CompletionChoice::fromJson(incompleteChoice), json::exception);
 }
 
 // Test JSON roundtrip serialization

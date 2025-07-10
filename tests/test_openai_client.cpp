@@ -52,15 +52,6 @@ TEST_CASE("OpenAIClient API type detection", "[openai][client][api-detection]") 
 
         REQUIRE(true);  // Test that we can create the request
     }
-
-    SECTION("Detect legacy Completions API") {
-        LLMRequestConfig config;
-        config.model = "gpt-3.5-turbo-instruct";  // Legacy model
-
-        LLMRequest request(config, "Complete this text: The sky is");
-
-        REQUIRE(true);  // Test that we can create the request
-    }
 }
 
 TEST_CASE("OpenAIClient request validation", "[openai][client][validation]") {
