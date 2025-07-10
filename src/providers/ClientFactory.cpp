@@ -1,19 +1,31 @@
-#include "providers/ClientFactory.h"
+#include "core/ClientFactory.h"
+
+#include <iostream>
+
 #include "openai/OpenAIClient.h"
-#include <stdexcept>
 
-namespace llmcpp {
-
-std::unique_ptr<LLMClient> ClientFactory::createClient(const std::string& provider, const json& config) {
+std::unique_ptr<LLMClient> ClientFactory::createClient(const std::string& provider,
+                                                       const std::string& apiKey) {
     if (provider == "openai") {
-        std::string apiKey = config.value("api_key", "");
-        if (apiKey.empty()) {
-            throw std::runtime_error("OpenAI API key is required");
-        }
         return std::make_unique<OpenAIClient>(apiKey);
     }
-    
-    throw std::runtime_error("Unsupported provider: " + provider);
+
+    // Add other providers here as they become available
+    // if (provider == "anthropic") {
+    //     return std::make_unique<Anthropic::AnthropicClient>(apiKey);
+    // }
+
+    return nullptr;
 }
 
-} // namespace llmcpp 
+bool ClientFactory::isProviderSupported(const std::string& provider) const {
+    return provider == "openai";
+    // Add other providers here
+    // return provider == "openai" || provider == "anthropic";
+}
+
+std::vector<std::string> ClientFactory::getSupportedProviders() const {
+    return {"openai"};
+    // Add other providers here
+    // return {"openai", "anthropic"};
+}
