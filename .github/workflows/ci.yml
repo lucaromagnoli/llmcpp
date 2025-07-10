@@ -33,14 +33,14 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install cmake ninja
-        choco install openssl
+        choco install openssl --version=3.1.1
 
     - name: Setup OpenSSL (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        echo "OPENSSL_ROOT_DIR=C:\Program Files\OpenSSL-Win64" >> $env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=C:\Program Files\OpenSSL-Win64\include" >> $env:GITHUB_ENV
-        echo "OPENSSL_LIBRARIES=C:\Program Files\OpenSSL-Win64\lib" >> $env:GITHUB_ENV
+        echo "OPENSSL_ROOT_DIR=C:/tools/openssl" >> $env:GITHUB_ENV
+        echo "OPENSSL_INCLUDE_DIR=C:/tools/openssl/include" >> $env:GITHUB_ENV
+        echo "OPENSSL_LIBRARIES=C:/tools/openssl/lib" >> $env:GITHUB_ENV
 
     - name: Disable pre-commit hook
       run: |
@@ -55,7 +55,6 @@ jobs:
         cmake -B build -G Ninja
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DLLMCPP_BUILD_TESTS=ON
-        ${{ matrix.os == 'windows-latest' && '-DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"' || '' }}
 
     - name: Build
       timeout-minutes: 15
