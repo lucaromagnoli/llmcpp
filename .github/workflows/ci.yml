@@ -31,21 +31,13 @@ jobs:
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
-      run: |
-        choco install cmake ninja
+      run: choco install cmake ninja
 
-    - name: Setup vcpkg and OpenSSL (Windows)
+    - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
-      timeout-minutes: 20
-      run: |
-        git clone https://github.com/Microsoft/vcpkg.git
-        .\vcpkg\bootstrap-vcpkg.bat
-        .\vcpkg\vcpkg.exe install openssl:x64-windows
-
-    - name: Setup OpenSSL (Windows)
-      if: matrix.os == 'windows-latest'
-      run: |
-        echo "CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
+      uses: lukka/run-vcpkg@v11
+      with:
+        vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'
 
     - name: Disable pre-commit hook
       run: |
@@ -60,7 +52,7 @@ jobs:
         cmake -B build -G Ninja
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DLLMCPP_BUILD_TESTS=ON
-        ${{ matrix.os == 'windows-latest' && format('-DCMAKE_TOOLCHAIN_FILE={0}\vcpkg\scripts\buildsystems\vcpkg.cmake', github.workspace) || '' }}
+        ${{ matrix.os == 'windows-latest' && '-DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake' || '' }}
 
     - name: Build
       timeout-minutes: 15
