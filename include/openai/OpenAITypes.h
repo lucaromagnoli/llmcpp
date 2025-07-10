@@ -1,10 +1,11 @@
 #pragma once
-#include "core/LLMTypes.h"
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <unordered_map>
 #include <variant>
 #include <vector>
-#include <unordered_map>
+
+#include "core/LLMTypes.h"
 
 using json = nlohmann::json;
 
@@ -19,11 +20,9 @@ namespace OpenAI {
 struct TextInput {
     std::string text;
     std::string type = "input_text";
-    
-    json toJson() const {
-        return json{{"text", text}, {"type", type}};
-    }
-    
+
+    json toJson() const { return json{{"text", text}, {"type", type}}; }
+
     static TextInput fromJson(const json& j) {
         TextInput input;
         input.text = j.at("text").get<std::string>();
@@ -32,18 +31,18 @@ struct TextInput {
 };
 
 struct ImageInput {
-    std::string detail = "auto"; // "high", "low", "auto"
+    std::string detail = "auto";  // "high", "low", "auto"
     std::string type = "input_image";
     std::optional<std::string> fileId;
     std::optional<std::string> imageUrl;
-    
+
     json toJson() const {
         json j = {{"detail", detail}, {"type", type}};
         if (fileId) j["file_id"] = *fileId;
         if (imageUrl) j["image_url"] = *imageUrl;
         return j;
     }
-    
+
     static ImageInput fromJson(const json& j) {
         ImageInput input;
         input.detail = j.value("detail", "auto");
@@ -58,7 +57,7 @@ struct FileInput {
     std::optional<std::string> fileData;
     std::optional<std::string> fileId;
     std::optional<std::string> filename;
-    
+
     json toJson() const {
         json j = {{"type", type}};
         if (fileData) j["file_data"] = *fileData;
@@ -66,7 +65,7 @@ struct FileInput {
         if (filename) j["filename"] = *filename;
         return j;
     }
-    
+
     static FileInput fromJson(const json& j) {
         FileInput input;
         if (j.contains("file_data")) input.fileData = j["file_data"].get<std::string>();
@@ -81,21 +80,25 @@ using InputContent = std::variant<TextInput, FileInput, ImageInput>;
 // Message types for structured input
 struct InputMessage {
     enum class Role { User, Assistant, System, Developer };
-    
+
     std::variant<std::string, std::vector<InputContent>> content;
     Role role = Role::User;
-    std::optional<std::string> type; // Always "message" if provided
-    
+    std::optional<std::string> type;  // Always "message" if provided
+
     static std::string roleToString(Role role) {
         switch (role) {
-            case Role::User: return "user";
-            case Role::Assistant: return "assistant";
-            case Role::System: return "system";
-            case Role::Developer: return "developer";
+            case Role::User:
+                return "user";
+            case Role::Assistant:
+                return "assistant";
+            case Role::System:
+                return "system";
+            case Role::Developer:
+                return "developer";
         }
         return "";
     }
-    
+
     static Role stringToRole(const std::string& roleStr) {
         if (roleStr == "user") return Role::User;
         if (roleStr == "assistant") return Role::Assistant;
@@ -103,7 +106,7 @@ struct InputMessage {
         if (roleStr == "developer") return Role::Developer;
         throw std::invalid_argument("Invalid role string: " + roleStr);
     }
-    
+
     json toJson() const {
         json j;
         if (std::holds_alternative<std::string>(content)) {
@@ -111,9 +114,9 @@ struct InputMessage {
         } else {
             json contentArray = json::array();
             for (const auto& item : std::get<std::vector<InputContent>>(content)) {
-                std::visit([&contentArray](const auto& input) {
-                    contentArray.push_back(input.toJson());
-                }, item);
+                std::visit(
+                    [&contentArray](const auto& input) { contentArray.push_back(input.toJson()); },
+                    item);
             }
             j["content"] = contentArray;
         }
@@ -121,11 +124,11 @@ struct InputMessage {
         if (type) j["type"] = *type;
         return j;
     }
-    
+
     static InputMessage fromJson(const json& j) {
         InputMessage msg;
         msg.role = stringToRole(j.at("role").get<std::string>());
-        
+
         if (j["content"].is_string()) {
             msg.content = j["content"].get<std::string>();
         } else if (j["content"].is_array()) {
@@ -142,7 +145,7 @@ struct InputMessage {
             }
             msg.content = contentList;
         }
-        
+
         if (j.contains("type")) msg.type = j["type"].get<std::string>();
         return msg;
     }
@@ -153,15 +156,15 @@ struct ResponsesInput {
     enum class Type { String, ContentList } type;
     std::string textInput;
     std::vector<InputMessage> contentList;
-    
+
     static ResponsesInput fromText(const std::string& text) {
         return ResponsesInput{Type::String, text, {}};
     }
-    
+
     static ResponsesInput fromContentList(const std::vector<InputMessage>& messages) {
         return ResponsesInput{Type::ContentList, "", messages};
     }
-    
+
     json toJson() const {
         if (type == Type::String) {
             return textInput;
@@ -173,7 +176,7 @@ struct ResponsesInput {
             return messageArray;
         }
     }
-    
+
     static ResponsesInput fromJson(const json& j) {
         if (j.is_string()) {
             return fromText(j.get<std::string>());
@@ -190,25 +193,23 @@ struct ResponsesInput {
 
 // Text output configuration for structured responses
 class TextOutputConfig {
-public:
+   public:
     TextOutputConfig() = default;
     TextOutputConfig(std::string name, json schema, bool strict = true)
         : formatName(std::move(name)), formatSchema(std::move(schema)), isStrict(strict) {}
-    
+
     json toJson() const {
         if (formatName.empty()) {
             return json{{"format", {{"type", "text"}}}};
         }
-        
-        json formatObj = {
-            {"type", "json_schema"},
-            {"name", formatName},
-            {"schema", formatSchema},
-            {"strict", isStrict}
-        };
+
+        json formatObj = {{"type", "json_schema"},
+                          {"name", formatName},
+                          {"schema", formatSchema},
+                          {"strict", isStrict}};
         return json{{"format", formatObj}};
     }
-    
+
     static TextOutputConfig fromJson(const json& j) {
         TextOutputConfig config;
         if (j.contains("format") && j["format"].contains("name")) {
@@ -218,8 +219,8 @@ public:
         }
         return config;
     }
-    
-private:
+
+   private:
     std::string formatName;
     json formatSchema;
     bool isStrict = true;
@@ -232,18 +233,13 @@ struct FunctionTool {
     bool strict = true;
     std::string type = "function";
     std::optional<std::string> description;
-    
+
     json toJson() const {
-        json j = {
-            {"name", name},
-            {"parameters", parameters},
-            {"strict", strict},
-            {"type", type}
-        };
+        json j = {{"name", name}, {"parameters", parameters}, {"strict", strict}, {"type", type}};
         if (description) j["description"] = *description;
         return j;
     }
-    
+
     static FunctionTool fromJson(const json& j) {
         FunctionTool tool;
         tool.name = j.at("name").get<std::string>();
@@ -256,10 +252,10 @@ struct FunctionTool {
 
 struct WebSearchTool {
     std::string type = "web_search";
-    std::optional<std::string> searchContextSize; // "low", "medium", "high"
+    std::optional<std::string> searchContextSize;  // "low", "medium", "high"
     std::optional<json> userLocation;
     std::optional<std::vector<std::string>> sites;
-    
+
     json toJson() const {
         json j = {{"type", type}};
         if (searchContextSize) j["search_context_size"] = *searchContextSize;
@@ -267,10 +263,11 @@ struct WebSearchTool {
         if (sites) j["sites"] = *sites;
         return j;
     }
-    
+
     static WebSearchTool fromJson(const json& j) {
         WebSearchTool tool;
-        if (j.contains("search_context_size")) tool.searchContextSize = j["search_context_size"].get<std::string>();
+        if (j.contains("search_context_size"))
+            tool.searchContextSize = j["search_context_size"].get<std::string>();
         if (j.contains("user_location")) tool.userLocation = j["user_location"];
         if (j.contains("sites")) tool.sites = j["sites"].get<std::vector<std::string>>();
         return tool;
@@ -281,9 +278,9 @@ struct FileSearchTool {
     std::string type = "file_search";
     std::vector<std::string> vectorStoreIds;
     std::optional<json> filters;
-    std::optional<int> maxNumResults; // 1-50
+    std::optional<int> maxNumResults;  // 1-50
     std::optional<json> rankingOptions;
-    
+
     json toJson() const {
         json j = {{"type", type}, {"vector_store_ids", vectorStoreIds}};
         if (filters) j["filters"] = *filters;
@@ -291,7 +288,7 @@ struct FileSearchTool {
         if (rankingOptions) j["ranking_options"] = *rankingOptions;
         return j;
     }
-    
+
     static FileSearchTool fromJson(const json& j) {
         FileSearchTool tool;
         tool.vectorStoreIds = j.at("vector_store_ids").get<std::vector<std::string>>();
@@ -304,26 +301,22 @@ struct FileSearchTool {
 
 struct CodeInterpreterTool {
     std::string type = "code_interpreter";
-    
-    json toJson() const {
-        return json{{"type", type}};
-    }
-    
-    static CodeInterpreterTool fromJson(const json&) {
-        return CodeInterpreterTool{};
-    }
+
+    json toJson() const { return json{{"type", type}}; }
+
+    static CodeInterpreterTool fromJson(const json&) { return CodeInterpreterTool{}; }
 };
 
 struct ImageGenerationTool {
     std::string type = "image_generation";
-    std::optional<int> partialImages; // 1-3
-    
+    std::optional<int> partialImages;  // 1-3
+
     json toJson() const {
         json j = {{"type", type}};
         if (partialImages) j["partial_images"] = *partialImages;
         return j;
     }
-    
+
     static ImageGenerationTool fromJson(const json& j) {
         ImageGenerationTool tool;
         if (j.contains("partial_images")) tool.partialImages = j["partial_images"].get<int>();
@@ -335,20 +328,18 @@ struct McpTool {
     std::string type = "mcp";
     std::string serverLabel;
     std::string serverUrl;
-    std::string requireApproval = "default"; // "always", "never", "default"
-    std::optional<json> headers; // For authentication
-    
+    std::string requireApproval = "default";  // "always", "never", "default"
+    std::optional<json> headers;              // For authentication
+
     json toJson() const {
-        json j = {
-            {"type", type},
-            {"server_label", serverLabel},
-            {"server_url", serverUrl},
-            {"require_approval", requireApproval}
-        };
+        json j = {{"type", type},
+                  {"server_label", serverLabel},
+                  {"server_url", serverUrl},
+                  {"require_approval", requireApproval}};
         if (headers) j["headers"] = *headers;
         return j;
     }
-    
+
     static McpTool fromJson(const json& j) {
         McpTool tool;
         tool.serverLabel = j.at("server_label").get<std::string>();
@@ -359,15 +350,19 @@ struct McpTool {
     }
 };
 
-using ToolVariant = std::variant<FunctionTool, WebSearchTool, FileSearchTool, CodeInterpreterTool, ImageGenerationTool, McpTool>;
+using ToolVariant = std::variant<FunctionTool, WebSearchTool, FileSearchTool, CodeInterpreterTool,
+                                 ImageGenerationTool, McpTool>;
 
 enum class ToolChoiceMode { None, Auto, Required };
 
 inline std::string toString(ToolChoiceMode mode) {
     switch (mode) {
-        case ToolChoiceMode::None: return "none";
-        case ToolChoiceMode::Auto: return "auto";
-        case ToolChoiceMode::Required: return "required";
+        case ToolChoiceMode::None:
+            return "none";
+        case ToolChoiceMode::Auto:
+            return "auto";
+        case ToolChoiceMode::Required:
+            return "required";
     }
     return "";
 }
@@ -384,15 +379,9 @@ struct FunctionCallOutput {
     std::string type = "function_call_output";
     std::string callId;
     std::string output;
-    
-    json toJson() const {
-        return json{
-            {"type", type},
-            {"call_id", callId},
-            {"output", output}
-        };
-    }
-    
+
+    json toJson() const { return json{{"type", type}, {"call_id", callId}, {"output", output}}; }
+
     static FunctionCallOutput fromJson(const json& j) {
         FunctionCallOutput output;
         output.callId = j.at("call_id").get<std::string>();
@@ -406,15 +395,12 @@ struct McpApprovalResponse {
     std::string type = "mcp_approval_response";
     bool approve;
     std::string approvalRequestId;
-    
+
     json toJson() const {
         return json{
-            {"type", type},
-            {"approve", approve},
-            {"approval_request_id", approvalRequestId}
-        };
+            {"type", type}, {"approve", approve}, {"approval_request_id", approvalRequestId}};
     }
-    
+
     static McpApprovalResponse fromJson(const json& j) {
         McpApprovalResponse response;
         response.approve = j.at("approve").get<bool>();
@@ -424,21 +410,20 @@ struct McpApprovalResponse {
 };
 
 // Response status enumeration
-enum class ResponseStatus {
-    Queued,
-    InProgress, 
-    Completed,
-    Failed,
-    Cancelled
-};
+enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled };
 
 inline std::string toString(ResponseStatus status) {
     switch (status) {
-        case ResponseStatus::Queued: return "queued";
-        case ResponseStatus::InProgress: return "in_progress";
-        case ResponseStatus::Completed: return "completed";
-        case ResponseStatus::Failed: return "failed";
-        case ResponseStatus::Cancelled: return "cancelled";
+        case ResponseStatus::Queued:
+            return "queued";
+        case ResponseStatus::InProgress:
+            return "in_progress";
+        case ResponseStatus::Completed:
+            return "completed";
+        case ResponseStatus::Failed:
+            return "failed";
+        case ResponseStatus::Cancelled:
+            return "cancelled";
     }
     return "";
 }
@@ -457,33 +442,30 @@ struct ResponsesRequest {
     // Required fields
     ResponsesInput input;
     std::string model = "gpt-4o";
-    
+
     // Optional configuration
-    std::optional<std::vector<std::string>> include; // What to include in response
-    std::optional<std::string> instructions; // System-level instructions
+    std::optional<std::vector<std::string>> include;  // What to include in response
+    std::optional<std::string> instructions;          // System-level instructions
     std::optional<int> maxOutputTokens;
     std::optional<std::unordered_map<std::string, std::string>> metadata;
     std::optional<bool> parallelToolCalls;
-    std::optional<std::string> previousResponseID; // For conversation continuity
-    std::optional<bool> store; // Whether to store for retrieval
-    std::optional<bool> stream; // Enable streaming
-    std::optional<bool> background; // Background processing for long tasks
+    std::optional<std::string> previousResponseID;  // For conversation continuity
+    std::optional<bool> store;                      // Whether to store for retrieval
+    std::optional<bool> stream;                     // Enable streaming
+    std::optional<bool> background;                 // Background processing for long tasks
     std::optional<double> temperature;
-    std::optional<TextOutputConfig> text; // Output format configuration
+    std::optional<TextOutputConfig> text;  // Output format configuration
     ToolChoiceMode toolChoice = ToolChoiceMode::Auto;
     std::optional<std::vector<ToolVariant>> tools;
     std::optional<double> topP;
-    std::optional<std::string> truncation; // "auto" or "disabled"
-    std::optional<std::string> user; // User identifier
-    std::optional<std::string> reasoningEffort; // "low", "medium", "high" for reasoning models
-    
+    std::optional<std::string> truncation;       // "auto" or "disabled"
+    std::optional<std::string> user;             // User identifier
+    std::optional<std::string> reasoningEffort;  // "low", "medium", "high" for reasoning models
+
     json toJson() const {
         json j = {
-            {"model", model},
-            {"input", input.toJson()},
-            {"tool_choice", toString(toolChoice)}
-        };
-        
+            {"model", model}, {"input", input.toJson()}, {"tool_choice", toString(toolChoice)}};
+
         if (include) j["include"] = *include;
         if (instructions) j["instructions"] = *instructions;
         if (maxOutputTokens) j["max_output_tokens"] = *maxOutputTokens;
@@ -499,20 +481,19 @@ struct ResponsesRequest {
         if (truncation) j["truncation"] = *truncation;
         if (user) j["user"] = *user;
         if (reasoningEffort) j["reasoning_effort"] = *reasoningEffort;
-        
+
         if (tools) {
             json toolsArray = json::array();
             for (const auto& tool : *tools) {
-                std::visit([&toolsArray](const auto& t) {
-                    toolsArray.push_back(t.toJson());
-                }, tool);
+                std::visit([&toolsArray](const auto& t) { toolsArray.push_back(t.toJson()); },
+                           tool);
             }
             j["tools"] = toolsArray;
         }
-        
+
         return j;
     }
-    
+
     static ResponsesRequest fromLLMRequest(const LLMRequest& request);
     static ResponsesRequest fromJson(const json& j);
 };
@@ -522,9 +503,9 @@ struct OutputMessage {
     std::string id;
     std::string type = "message";
     std::string role = "assistant";
-    std::vector<json> content; // Content blocks (text, images, etc.)
+    std::vector<json> content;  // Content blocks (text, images, etc.)
     std::optional<std::string> status;
-    
+
     static OutputMessage fromJson(const json& j) {
         OutputMessage msg;
         msg.id = j.at("id").get<std::string>();
@@ -541,7 +522,7 @@ struct FunctionCall {
     std::string name;
     json arguments;
     std::optional<std::string> status;
-    
+
     static FunctionCall fromJson(const json& j) {
         FunctionCall call;
         call.id = j.at("id").get<std::string>();
@@ -556,7 +537,7 @@ struct WebSearchCall {
     std::string id;
     std::string type = "web_search_call";
     std::string status;
-    
+
     static WebSearchCall fromJson(const json& j) {
         WebSearchCall call;
         call.id = j.at("id").get<std::string>();
@@ -569,8 +550,8 @@ struct ImageGenerationCall {
     std::string id;
     std::string type = "image_generation_call";
     std::string status;
-    std::optional<std::string> result; // Base64 encoded image
-    
+    std::optional<std::string> result;  // Base64 encoded image
+
     static ImageGenerationCall fromJson(const json& j) {
         ImageGenerationCall call;
         call.id = j.at("id").get<std::string>();
@@ -586,7 +567,7 @@ struct McpApprovalRequest {
     std::string name;
     json arguments;
     std::string serverLabel;
-    
+
     static McpApprovalRequest fromJson(const json& j) {
         McpApprovalRequest request;
         request.id = j.at("id").get<std::string>();
@@ -597,7 +578,8 @@ struct McpApprovalRequest {
     }
 };
 
-using OutputItem = std::variant<OutputMessage, FunctionCall, WebSearchCall, ImageGenerationCall, McpApprovalRequest>;
+using OutputItem = std::variant<OutputMessage, FunctionCall, WebSearchCall, ImageGenerationCall,
+                                McpApprovalRequest>;
 
 // Complete Responses API response
 struct ResponsesResponse {
@@ -611,7 +593,7 @@ struct ResponsesResponse {
     std::optional<int> maxOutputTokens;
     std::string model;
     std::vector<OutputItem> output;
-    std::optional<std::string> outputText; // Convenience field for text output
+    std::optional<std::string> outputText;  // Convenience field for text output
     bool parallelToolCalls = false;
     std::optional<std::string> previousResponseId;
     std::optional<json> reasoning;
@@ -625,10 +607,10 @@ struct ResponsesResponse {
     std::optional<std::string> user;
     std::optional<json> metadata;
     std::optional<std::string> reasoningEffort;
-    
+
     static ResponsesResponse fromJson(const json& j);
     LLMResponse toLLMResponse() const;
-    
+
     // Convenience methods
     std::string getOutputText() const;
     std::vector<FunctionCall> getFunctionCalls() const;
@@ -642,12 +624,12 @@ struct ResponsesResponse {
  */
 
 struct ChatMessage {
-    std::string role;     // "system", "user", "assistant", "tool"
+    std::string role;  // "system", "user", "assistant", "tool"
     std::string content;
     std::optional<std::string> name;
     std::optional<json> toolCalls;
     std::optional<std::string> toolCallId;
-    
+
     json toJson() const {
         json j = {{"role", role}, {"content", content}};
         if (name) j["name"] = *name;
@@ -655,7 +637,7 @@ struct ChatMessage {
         if (toolCallId) j["tool_call_id"] = *toolCallId;
         return j;
     }
-    
+
     static ChatMessage fromJson(const json& j) {
         ChatMessage msg;
         msg.role = j.at("role").get<std::string>();
@@ -684,14 +666,14 @@ struct ChatCompletionRequest {
     std::optional<int> seed;
     std::optional<std::vector<json>> tools;
     std::optional<std::string> toolChoice;
-    
+
     json toJson() const {
         json j = {{"model", model}, {"messages", json::array()}};
-        
+
         for (const auto& msg : messages) {
             j["messages"].push_back(msg.toJson());
         }
-        
+
         if (temperature) j["temperature"] = *temperature;
         if (maxTokens) j["max_tokens"] = *maxTokens;
         if (topP) j["top_p"] = *topP;
@@ -706,10 +688,10 @@ struct ChatCompletionRequest {
         if (seed) j["seed"] = *seed;
         if (tools) j["tools"] = *tools;
         if (toolChoice) j["tool_choice"] = *toolChoice;
-        
+
         return j;
     }
-    
+
     static ChatCompletionRequest fromLLMRequest(const LLMRequest& request);
     LLMRequest toLLMRequest() const;
 };
@@ -719,7 +701,7 @@ struct ChatCompletionChoice {
     ChatMessage message;
     std::optional<std::string> finishReason;
     std::optional<json> logprobs;
-    
+
     static ChatCompletionChoice fromJson(const json& j) {
         ChatCompletionChoice choice;
         choice.index = j.at("index").get<int>();
@@ -740,85 +722,8 @@ struct ChatCompletionResponse {
     std::vector<ChatCompletionChoice> choices;
     LLMUsage usage;
     std::optional<std::string> systemFingerprint;
-    
+
     static ChatCompletionResponse fromJson(const json& j);
-    LLMResponse toLLMResponse() const;
-};
-
-/**
- * OpenAI Completions API Types (Legacy API - Deprecated)
- */
-
-struct CompletionRequest {
-    std::string model;
-    std::string prompt;
-    std::optional<int> maxTokens;
-    std::optional<double> temperature;
-    std::optional<double> topP;
-    std::optional<int> n;
-    std::optional<bool> stream;
-    std::optional<int> logprobs;
-    std::optional<bool> echo;
-    std::optional<std::vector<std::string>> stop;
-    std::optional<double> presencePenalty;
-    std::optional<double> frequencyPenalty;
-    std::optional<int> bestOf;
-    std::optional<json> logitBias;
-    std::optional<std::string> user;
-    std::optional<std::string> suffix;
-    
-    json toJson() const {
-        json j = {{"model", model}, {"prompt", prompt}};
-        
-        if (maxTokens) j["max_tokens"] = *maxTokens;
-        if (temperature) j["temperature"] = *temperature;
-        if (topP) j["top_p"] = *topP;
-        if (n) j["n"] = *n;
-        if (stream) j["stream"] = *stream;
-        if (logprobs) j["logprobs"] = *logprobs;
-        if (echo) j["echo"] = *echo;
-        if (stop) j["stop"] = *stop;
-        if (presencePenalty) j["presence_penalty"] = *presencePenalty;
-        if (frequencyPenalty) j["frequency_penalty"] = *frequencyPenalty;
-        if (bestOf) j["best_of"] = *bestOf;
-        if (logitBias) j["logit_bias"] = *logitBias;
-        if (user) j["user"] = *user;
-        if (suffix) j["suffix"] = *suffix;
-        
-        return j;
-    }
-    
-    static CompletionRequest fromLLMRequest(const LLMRequest& request);
-    LLMRequest toLLMRequest() const;
-};
-
-struct CompletionChoice {
-    std::string text;
-    int index;
-    std::optional<json> logprobs;
-    std::optional<std::string> finishReason;
-    
-    static CompletionChoice fromJson(const json& j) {
-        CompletionChoice choice;
-        choice.text = j.at("text").get<std::string>();
-        choice.index = j.at("index").get<int>();
-        if (j.contains("logprobs")) choice.logprobs = j["logprobs"];
-        if (j.contains("finish_reason") && !j["finish_reason"].is_null()) {
-            choice.finishReason = j["finish_reason"].get<std::string>();
-        }
-        return choice;
-    }
-};
-
-struct CompletionResponse {
-    std::string id;
-    std::string object;
-    int64_t created;
-    std::string model;
-    std::vector<CompletionChoice> choices;
-    LLMUsage usage;
-    
-    static CompletionResponse fromJson(const json& j);
     LLMResponse toLLMResponse() const;
 };
 
@@ -833,19 +738,17 @@ struct OpenAIConfig {
     int timeoutSeconds = 30;
     int maxRetries = 3;
     bool enableDeprecationWarnings = true;
-    
+
     json toJson() const {
-        return json{
-            {"api_key", apiKey},
-            {"base_url", baseUrl},
-            {"organization", organization},
-            {"project", project},
-            {"timeout_seconds", timeoutSeconds},
-            {"max_retries", maxRetries},
-            {"enable_deprecation_warnings", enableDeprecationWarnings}
-        };
+        return json{{"api_key", apiKey},
+                    {"base_url", baseUrl},
+                    {"organization", organization},
+                    {"project", project},
+                    {"timeout_seconds", timeoutSeconds},
+                    {"max_retries", maxRetries},
+                    {"enable_deprecation_warnings", enableDeprecationWarnings}};
     }
-    
+
     static OpenAIConfig fromJson(const json& j) {
         OpenAIConfig config;
         if (j.contains("api_key")) config.apiKey = j["api_key"].get<std::string>();
@@ -865,9 +768,8 @@ struct OpenAIConfig {
  * API Type Detection and Routing
  */
 enum class ApiType {
-    RESPONSES,           // New structured output API
-    CHAT_COMPLETIONS,    // Traditional conversation API
-    COMPLETIONS,         // Legacy text completion (deprecated)
+    RESPONSES,         // New structured output API
+    CHAT_COMPLETIONS,  // Traditional conversation API
     AUTO_DETECT
 };
 
@@ -875,25 +777,18 @@ enum class ApiType {
  * Utility functions
  */
 ApiType detectApiType(const LLMRequest& request);
-bool isLegacyModel(const std::string& model);
 bool supportsResponses(const std::string& model);
 bool supportsChatCompletions(const std::string& model);
-bool supportsCompletions(const std::string& model);
+
 std::string getRecommendedApiForModel(const std::string& model);
 
 // Model lists for different APIs
 const std::vector<std::string> RESPONSES_MODELS = {
-    "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",
-    "gpt-image-1", "o1", "o3-mini", "o3", "o4-mini", "computer-use-preview"
-};
+    "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",        "gpt-image-1",
+    "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
 
-const std::vector<std::string> CHAT_COMPLETION_MODELS = {
-    "gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"
-};
-
-const std::vector<std::string> COMPLETION_MODELS = {
-    "text-davinci-003", "text-davinci-002", "text-curie-001", "text-babbage-001", "text-ada-001"
-};
+const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo", "gpt-4o",
+                                                         "gpt-4o-mini", "gpt-3.5-turbo"};
 
 /**
  * Implementation stubs for conversion methods
@@ -921,24 +816,29 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
     ResponsesRequest req;
     req.model = j.value("model", "gpt-4o");
     req.input = ResponsesInput::fromJson(j.at("input"));
-    
+
     if (j.contains("include")) req.include = j["include"].get<std::vector<std::string>>();
     if (j.contains("instructions")) req.instructions = j["instructions"].get<std::string>();
     if (j.contains("max_output_tokens")) req.maxOutputTokens = j["max_output_tokens"].get<int>();
-    if (j.contains("metadata")) req.metadata = j["metadata"].get<std::unordered_map<std::string, std::string>>();
-    if (j.contains("parallel_tool_calls")) req.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
-    if (j.contains("previous_response_id")) req.previousResponseID = j["previous_response_id"].get<std::string>();
+    if (j.contains("metadata"))
+        req.metadata = j["metadata"].get<std::unordered_map<std::string, std::string>>();
+    if (j.contains("parallel_tool_calls"))
+        req.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
+    if (j.contains("previous_response_id"))
+        req.previousResponseID = j["previous_response_id"].get<std::string>();
     if (j.contains("store")) req.store = j["store"].get<bool>();
     if (j.contains("stream")) req.stream = j["stream"].get<bool>();
     if (j.contains("background")) req.background = j["background"].get<bool>();
     if (j.contains("temperature")) req.temperature = j["temperature"].get<double>();
     if (j.contains("text")) req.text = TextOutputConfig::fromJson(j["text"]);
-    if (j.contains("tool_choice")) req.toolChoice = toolChoiceModeFromString(j["tool_choice"].get<std::string>());
+    if (j.contains("tool_choice"))
+        req.toolChoice = toolChoiceModeFromString(j["tool_choice"].get<std::string>());
     if (j.contains("top_p")) req.topP = j["top_p"].get<double>();
     if (j.contains("truncation")) req.truncation = j["truncation"].get<std::string>();
     if (j.contains("user")) req.user = j["user"].get<std::string>();
-    if (j.contains("reasoning_effort")) req.reasoningEffort = j["reasoning_effort"].get<std::string>();
-    
+    if (j.contains("reasoning_effort"))
+        req.reasoningEffort = j["reasoning_effort"].get<std::string>();
+
     // Parse tools array if present
     if (j.contains("tools") && j["tools"].is_array()) {
         std::vector<ToolVariant> tools;
@@ -960,7 +860,7 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
         }
         req.tools = tools;
     }
-    
+
     return req;
 }
 
@@ -972,14 +872,16 @@ inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
     resp.createdAt = j.value("created_at", 0.0);
     resp.status = responseStatusFromString(j.value("status", "completed"));
     resp.model = j.at("model").get<std::string>();
-    
+
     if (j.contains("error")) resp.error = j["error"];
     if (j.contains("incomplete_details")) resp.incompleteDetails = j["incomplete_details"];
     if (j.contains("instructions")) resp.instructions = j["instructions"].get<std::string>();
     if (j.contains("max_output_tokens")) resp.maxOutputTokens = j["max_output_tokens"].get<int>();
     if (j.contains("output_text")) resp.outputText = j["output_text"].get<std::string>();
-    if (j.contains("parallel_tool_calls")) resp.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
-    if (j.contains("previous_response_id")) resp.previousResponseId = j["previous_response_id"].get<std::string>();
+    if (j.contains("parallel_tool_calls"))
+        resp.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
+    if (j.contains("previous_response_id"))
+        resp.previousResponseId = j["previous_response_id"].get<std::string>();
     if (j.contains("reasoning")) resp.reasoning = j["reasoning"];
     if (j.contains("store")) resp.store = j["store"].get<bool>();
     if (j.contains("text")) resp.text = j["text"];
@@ -989,15 +891,18 @@ inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
     if (j.contains("truncation")) resp.truncation = j["truncation"].get<std::string>();
     if (j.contains("user")) resp.user = j["user"].get<std::string>();
     if (j.contains("metadata")) resp.metadata = j["metadata"];
-    if (j.contains("reasoning_effort")) resp.reasoningEffort = j["reasoning_effort"].get<std::string>();
-    
+    if (j.contains("reasoning_effort"))
+        resp.reasoningEffort = j["reasoning_effort"].get<std::string>();
+
     // Parse usage
     if (j.contains("usage")) {
         const auto& usage = j["usage"];
-        if (usage.contains("input_tokens")) resp.usage.inputTokens = usage["input_tokens"].get<int>();
-        if (usage.contains("output_tokens")) resp.usage.outputTokens = usage["output_tokens"].get<int>();
+        if (usage.contains("input_tokens"))
+            resp.usage.inputTokens = usage["input_tokens"].get<int>();
+        if (usage.contains("output_tokens"))
+            resp.usage.outputTokens = usage["output_tokens"].get<int>();
     }
-    
+
     // Parse output array
     if (j.contains("output") && j["output"].is_array()) {
         for (const auto& outputJson : j["output"]) {
@@ -1015,7 +920,7 @@ inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
             }
         }
     }
-    
+
     return resp;
 }
 
@@ -1024,7 +929,7 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
     llmResp.success = (status == ResponseStatus::Completed);
     llmResp.responseId = id;
     llmResp.usage = usage;
-    
+
     if (hasError()) {
         llmResp.errorMessage = error->dump();
     } else {
@@ -1034,21 +939,18 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
         if (!textOutput.empty()) {
             llmResp.result["text"] = textOutput;
         }
-        
+
         // Add function calls if any
         auto functionCalls = getFunctionCalls();
         if (!functionCalls.empty()) {
             json calls = json::array();
             for (const auto& call : functionCalls) {
-                calls.push_back({
-                    {"id", call.id},
-                    {"name", call.name},
-                    {"arguments", call.arguments}
-                });
+                calls.push_back(
+                    {{"id", call.id}, {"name", call.name}, {"arguments", call.arguments}});
             }
             llmResp.result["function_calls"] = calls;
         }
-        
+
         // Add images if any
         auto images = getImageGenerations();
         if (!images.empty()) {
@@ -1061,14 +963,14 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
             llmResp.result["images"] = imageArray;
         }
     }
-    
+
     return llmResp;
 }
 
 // Convenience methods for ResponsesResponse
 inline std::string ResponsesResponse::getOutputText() const {
     if (outputText) return *outputText;
-    
+
     // Extract from output messages
     for (const auto& item : output) {
         if (std::holds_alternative<OutputMessage>(item)) {
@@ -1107,7 +1009,7 @@ inline std::vector<ImageGenerationCall> ResponsesResponse::getImageGenerations()
 inline ChatCompletionRequest ChatCompletionRequest::fromLLMRequest(const LLMRequest& request) {
     ChatCompletionRequest chatReq;
     chatReq.model = request.config.model;
-    
+
     // Convert prompt to messages
     if (!request.prompt.empty()) {
         ChatMessage userMsg;
@@ -1115,14 +1017,14 @@ inline ChatCompletionRequest ChatCompletionRequest::fromLLMRequest(const LLMRequ
         userMsg.content = request.prompt;
         chatReq.messages.push_back(userMsg);
     }
-    
+
     if (request.config.maxTokens > 0) {
         chatReq.maxTokens = request.config.maxTokens;
     }
     if (request.config.randomness >= 0.0f) {
         chatReq.temperature = static_cast<double>(request.config.randomness);
     }
-    
+
     return chatReq;
 }
 
@@ -1132,7 +1034,7 @@ inline LLMRequest ChatCompletionRequest::toLLMRequest() const {
     config.model = model;
     if (temperature) config.randomness = static_cast<float>(*temperature);
     if (maxTokens) config.maxTokens = *maxTokens;
-    
+
     std::string prompt;
     if (!messages.empty()) {
         // Use the last user message as prompt
@@ -1143,7 +1045,7 @@ inline LLMRequest ChatCompletionRequest::toLLMRequest() const {
             }
         }
     }
-    
+
     return LLMRequest(config, prompt);
 }
 
@@ -1154,23 +1056,25 @@ inline ChatCompletionResponse ChatCompletionResponse::fromJson(const json& j) {
     resp.object = j.at("object").get<std::string>();
     resp.created = j.at("created").get<int64_t>();
     resp.model = j.at("model").get<std::string>();
-    
+
     if (j.contains("system_fingerprint")) {
         resp.systemFingerprint = j["system_fingerprint"].get<std::string>();
     }
-    
+
     // Parse choices
     for (const auto& choiceJson : j.at("choices")) {
         resp.choices.push_back(ChatCompletionChoice::fromJson(choiceJson));
     }
-    
+
     // Parse usage
     if (j.contains("usage")) {
         const auto& usage = j["usage"];
-        if (usage.contains("prompt_tokens")) resp.usage.inputTokens = usage["prompt_tokens"].get<int>();
-        if (usage.contains("completion_tokens")) resp.usage.outputTokens = usage["completion_tokens"].get<int>();
+        if (usage.contains("prompt_tokens"))
+            resp.usage.inputTokens = usage["prompt_tokens"].get<int>();
+        if (usage.contains("completion_tokens"))
+            resp.usage.outputTokens = usage["completion_tokens"].get<int>();
     }
-    
+
     return resp;
 }
 
@@ -1179,7 +1083,7 @@ inline LLMResponse ChatCompletionResponse::toLLMResponse() const {
     llmResp.success = !choices.empty();
     llmResp.responseId = id;
     llmResp.usage = usage;
-    
+
     if (!choices.empty()) {
         llmResp.result = json::object();
         llmResp.result["text"] = choices[0].message.content;
@@ -1189,72 +1093,7 @@ inline LLMResponse ChatCompletionResponse::toLLMResponse() const {
     } else {
         llmResp.errorMessage = "No choices returned";
     }
-    
-    return llmResp;
-}
 
-// CompletionRequest conversion methods
-inline CompletionRequest CompletionRequest::fromLLMRequest(const LLMRequest& request) {
-    CompletionRequest compReq;
-    compReq.model = request.config.model;
-    compReq.prompt = request.prompt;
-    
-    if (request.config.maxTokens > 0) {
-        compReq.maxTokens = request.config.maxTokens;
-    }
-    if (request.config.randomness >= 0.0f) {
-        compReq.temperature = static_cast<double>(request.config.randomness);
-    }
-    
-    return compReq;
-}
-
-inline LLMRequest CompletionRequest::toLLMRequest() const {
-    LLMRequestConfig config;
-    config.client = "openai";
-    config.model = model;
-    if (temperature) config.randomness = static_cast<float>(*temperature);
-    if (maxTokens) config.maxTokens = *maxTokens;
-    
-    return LLMRequest(config, prompt);
-}
-
-// CompletionResponse conversion methods
-inline CompletionResponse CompletionResponse::fromJson(const json& j) {
-    CompletionResponse resp;
-    resp.id = j.at("id").get<std::string>();
-    resp.object = j.at("object").get<std::string>();
-    resp.created = j.at("created").get<int64_t>();
-    resp.model = j.at("model").get<std::string>();
-    
-    // Parse choices
-    for (const auto& choiceJson : j.at("choices")) {
-        resp.choices.push_back(CompletionChoice::fromJson(choiceJson));
-    }
-    
-    // Parse usage
-    if (j.contains("usage")) {
-        const auto& usage = j["usage"];
-        if (usage.contains("prompt_tokens")) resp.usage.inputTokens = usage["prompt_tokens"].get<int>();
-        if (usage.contains("completion_tokens")) resp.usage.outputTokens = usage["completion_tokens"].get<int>();
-    }
-    
-    return resp;
-}
-
-inline LLMResponse CompletionResponse::toLLMResponse() const {
-    LLMResponse llmResp;
-    llmResp.success = !choices.empty();
-    llmResp.responseId = id;
-    llmResp.usage = usage;
-    
-    if (!choices.empty()) {
-        llmResp.result = json::object();
-        llmResp.result["text"] = choices[0].text;
-    } else {
-        llmResp.errorMessage = "No choices returned";
-    }
-    
     return llmResp;
 }
 
@@ -1263,32 +1102,16 @@ inline LLMResponse CompletionResponse::toLLMResponse() const {
  */
 inline ApiType detectApiType(const LLMRequest& request) {
     const std::string& model = request.config.model;
-    
+
     // Check if it's a Responses API model
     for (const auto& responsesModel : RESPONSES_MODELS) {
         if (model == responsesModel) {
             return ApiType::RESPONSES;
         }
     }
-    
-    // Check if it's a legacy Completions model
-    for (const auto& completionModel : COMPLETION_MODELS) {
-        if (model == completionModel) {
-            return ApiType::COMPLETIONS;
-        }
-    }
-    
+
     // Default to Chat Completions for most models
     return ApiType::CHAT_COMPLETIONS;
-}
-
-inline bool isLegacyModel(const std::string& model) {
-    for (const auto& legacyModel : COMPLETION_MODELS) {
-        if (model == legacyModel) {
-            return true;
-        }
-    }
-    return false;
 }
 
 inline bool supportsResponses(const std::string& model) {
@@ -1309,24 +1132,13 @@ inline bool supportsChatCompletions(const std::string& model) {
     return false;
 }
 
-inline bool supportsCompletions(const std::string& model) {
-    for (const auto& completionModel : COMPLETION_MODELS) {
-        if (model == completionModel) {
-            return true;
-        }
-    }
-    return false;
-}
-
 inline std::string getRecommendedApiForModel(const std::string& model) {
     if (supportsResponses(model)) {
         return "Responses API (Recommended)";
     } else if (supportsChatCompletions(model)) {
         return "Chat Completions API";
-    } else if (supportsCompletions(model)) {
-        return "Completions API (Deprecated)";
     }
     return "Unknown";
 }
 
-} // namespace OpenAI 
+}  // namespace OpenAI

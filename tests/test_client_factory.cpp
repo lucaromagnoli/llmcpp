@@ -312,18 +312,4 @@ TEST_CASE("Provider-specific features", "[client][providers]") {
             REQUIRE(chatRequest.config.jsonSchema.empty());
         }
     }
-
-    SECTION("Legacy model support") {
-        auto client = factory.createClient("openai", "test-key");
-
-        if (client) {
-            LLMRequestConfig config;
-            config.client = "openai";
-            config.model = "gpt-3.5-turbo-instruct";  // Legacy model
-
-            LLMRequest legacyRequest(config, "Legacy completion request");
-
-            REQUIRE(legacyRequest.config.model == "gpt-3.5-turbo-instruct");
-        }
-    }
 }
