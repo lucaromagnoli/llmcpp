@@ -31,58 +31,51 @@ target_link_libraries(your_target PRIVATE llmcpp)
 #include <llmcpp.h>
 
 // Create OpenAI client
-auto client = llmcpp::ClientFactory::createOpenAIClient("your-api-key");
+auto client = llmcpp::ClientFactory::createClient("openai", "your-api-key");
 
-// Prepare request
+// Prepare request configuration
 llmcpp::Config config;
 config.client = "openai";
 config.model = "gpt-4";
 config.maxTokens = 100;
-config.jsonSchema = nlohmann::json::object({
-    {"type", "object"},
-    {"properties", {
-        {"response", {{"type", "string"}}}
-    }}
-});
+config.functionName = "my_function";
 
-llmcpp::Request request;
-request.config = config;
-request.prompt = "Hello, world!";
+// Create request
+llmcpp::Request request(config, "Hello, how are you?");
 
 // Send synchronous request
-auto response = client->sendRequest(request);
-if (response.success) {
-    std::cout << "Response: " << response.result.dump() << std::endl;
-} else {
-    std::cerr << "Error: " << response.errorMessage << std::endl;
-}
+client->sendRequest(request, [](const llmcpp::Response& response) {
+    if (response.success) {
+        std::cout << "Response: " << response.result.dump() << std::endl;
+    } else {
+        std::cerr << "Error: " << response.errorMessage << std::endl;
+    }
+});
 ```
 
 ### Async Usage
 
 ```cpp
-// Send async request
-auto future = client->sendRequestAsync(request, [](llmcpp::Response response) {
+// Send async request with callback
+client->sendRequest(request, [](const llmcpp::Response& response) {
     if (response.success) {
         std::cout << "Async response: " << response.result.dump() << std::endl;
     }
 });
-
-// Wait for completion
-auto response = future.get();
 ```
 
-### Streaming
+### Streaming (Future Feature)
 
 ```cpp
-auto future = client->sendStreamingRequest(request,
+// Streaming support (when implemented)
+client->sendStreamingRequest(request,
+    // Final callback - called when complete
+    [](const llmcpp::Response& response) {
+        std::cout << "Stream completed" << std::endl;
+    },
     // Stream callback - called for each chunk
     [](const std::string& chunk) {
         std::cout << "Chunk: " << chunk << std::endl;
-    },
-    // Final callback - called when complete
-    [](llmcpp::Response response) {
-        std::cout << "Stream completed" << std::endl;
     }
 );
 ```
@@ -99,13 +92,37 @@ auto future = client->sendStreamingRequest(request,
 
 ### Providers
 
-- **OpenAIClient**: Supports Chat Completions and function calling
+- **OpenAIClient**: Supports OpenAI Responses API and Chat Completions
 - More providers coming soon (Anthropic, local models, etc.)
 
 ### Provider Management
 
 - `ClientFactory`: Create clients with configuration
 - `ClientManager`: Manage multiple clients and API keys
+
+## Current Status
+
+🚧 **This library is currently in active development (v1.0.0)**
+
+**Working Features:**
+- ✅ Project structure and build system
+- ✅ Core type definitions and interfaces
+- ✅ OpenAI client architecture
+- ✅ Cross-platform CI/CD (Linux, macOS, Windows)
+
+**In Progress:**
+- 🔄 OpenAI HTTP client implementation
+- 🔄 OpenAI Responses API integration
+- 🔄 Async request handling
+- 🔄 Streaming support
+
+**Planned:**
+- 📋 Chat Completions API
+- 📋 Function calling support
+- 📋 Additional providers (Anthropic, etc.)
+- 📋 Examples and documentation
+
+See [ROADMAP.md](ROADMAP.md) for detailed development plans.
 
 ## Building
 
@@ -196,8 +213,8 @@ Set your API keys securely:
 // Environment variable (recommended)
 setenv("OPENAI_API_KEY", "your-key-here", 1);
 
-// Or programmatically
-client->setApiKey("your-key-here");
+// Or pass directly to factory
+auto client = llmcpp::ClientFactory::createClient("openai", "your-api-key");
 ```
 
 ### Model Configuration
@@ -207,31 +224,12 @@ llmcpp::Config config;
 config.model = "gpt-4";           // Model name
 config.maxTokens = 500;           // Max response tokens
 config.randomness = 0.7f;         // Temperature (0.0 - 1.0)
-config.functionName = "my_func";  // Function calling name
+config.functionName = "my_func";  // Function name for structured outputs
 ```
 
-## Examples
+## Development
 
-See the `examples/` directory for complete usage examples:
-
-- **basic_usage.cpp**: Simple sync/async requests
-- **streaming.cpp**: Streaming responses
-- **function_calling.cpp**: Using structured outputs
-- **error_handling.cpp**: Comprehensive error handling
-
-## Contributing
-
-This library is open source and contributions are welcome!
-
-### Adding New Providers
-
-1. Inherit from `LLMClient`
-2. Implement all pure virtual methods
-3. Add provider-specific types in your namespace
-4. Update `ClientFactory` and `ClientManager`
-5. Add tests and examples
-
-### Development
+### Clone and Build
 
 ```bash
 # Clone with submodules
@@ -245,14 +243,21 @@ make dev                     # Build debug + examples + tests
 make quick                   # Build and test
 make format                  # Format code
 make lint                    # Static analysis
-make coverage                # Generate coverage report
-
-# Alternative: Using CMake directly
-mkdir build && cd build
-cmake .. -DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON
-cmake --build .
-ctest
+make clean                   # Clean build
 ```
+
+### Contributing
+
+This library is open source and contributions are welcome!
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new features
+5. Ensure all tests pass
+6. Submit a pull request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
@@ -260,11 +265,23 @@ Licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 ## Roadmap
 
-- [ ] Complete OpenAI implementation
-- [ ] Add Anthropic Claude support
-- [ ] Add local model support (llama.cpp integration)
-- [ ] Add Azure OpenAI support
-- [ ] Add batch processing
-- [ ] Add response caching
-- [ ] Add comprehensive logging
-- [ ] Add metrics and monitoring hooks 
+### Phase 1: Core Implementation (v1.0.0)
+- [ ] OpenAI HTTP Client
+- [ ] OpenAI Responses API
+- [ ] Streaming support
+- [ ] Authentication and API key management
+- [ ] Examples and documentation
+
+### Phase 2: Enhanced Features (v1.1.0)
+- [ ] Chat Completions API
+- [ ] Function calling support
+- [ ] Integration tests
+- [ ] Performance optimizations
+
+### Phase 3: Multi-Provider (v2.0.0)
+- [ ] Anthropic Claude support
+- [ ] Local model support (llama.cpp integration)
+- [ ] Azure OpenAI support
+- [ ] Batch processing
+
+For detailed development plans, see [ROADMAP.md](ROADMAP.md). 
