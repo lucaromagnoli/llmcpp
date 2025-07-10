@@ -1,38 +1,32 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(juce-llm-client VERSION 1.0.0)
+project(llmcpp VERSION 1.0.0)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# JUCE dependency handling
-find_package(PkgConfig REQUIRED)
+# Include FetchContent for dependencies
+include(FetchContent)
 
-# Option to build standalone (fetches JUCE) or as submodule
-option(JUCE_LLM_CLIENT_FETCH_JUCE "Fetch JUCE automatically when building standalone" OFF)
+# Fetch nlohmann/json
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(nlohmann_json)
 
-# Try to find JUCE
-find_package(juce CONFIG QUIET)
-
-if(NOT juce_FOUND AND NOT TARGET juce::juce_core)
-    if(JUCE_LLM_CLIENT_FETCH_JUCE OR CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-        message(STATUS "JUCE not found, fetching from GitHub...")
-        include(FetchContent)
-        FetchContent_Declare(
-            JUCE
-            GIT_REPOSITORY https://github.com/juce-framework/JUCE.git
-            GIT_TAG 8.0.6
-        )
-        FetchContent_MakeAvailable(JUCE)
-    else()
-        message(STATUS "JUCE not found. Enable JUCE_LLM_CLIENT_FETCH_JUCE or use in a project with JUCE")
-        return()
-    endif()
-endif()
+# Fetch cpp-httplib
+FetchContent_Declare(
+    httplib
+    GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
+    GIT_TAG v0.14.3
+)
+FetchContent_MakeAvailable(httplib)
 
 # Create the library
-add_library(juce_llm_client STATIC
+add_library(llmcpp STATIC
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
     src/openai/OpenAIClient.cpp
@@ -43,29 +37,32 @@ add_library(juce_llm_client STATIC
 )
 
 # Add include directories
-target_include_directories(juce_llm_client PUBLIC
+target_include_directories(llmcpp PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
 
-# Link JUCE modules
-target_link_libraries(juce_llm_client PUBLIC
-    juce::juce_core
+# Link dependencies
+target_link_libraries(llmcpp PUBLIC
+    nlohmann_json::nlohmann_json
+    httplib::httplib
 )
 
-# Compile definitions
-target_compile_definitions(juce_llm_client PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_DISABLE_JUCE_VERSION_PRINTING=1
+# Compile definitions for httplib
+target_compile_definitions(llmcpp PUBLIC
+    CPPHTTPLIB_OPENSSL_SUPPORT
 )
+
+# Find OpenSSL for HTTPS support
+find_package(OpenSSL REQUIRED)
+target_link_libraries(llmcpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 
 # Export the library for use by other projects
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(GNUInstallDirs)
     
-    install(TARGETS juce_llm_client
-        EXPORT juce-llm-client-targets
+    install(TARGETS llmcpp
+        EXPORT llmcpp-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -74,21 +71,22 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     
     install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
     
-    install(EXPORT juce-llm-client-targets
-        FILE juce-llm-client-targets.cmake
-        NAMESPACE juce-llm-client::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/juce-llm-client
+    install(EXPORT llmcpp-targets
+        FILE llmcpp-targets.cmake
+        NAMESPACE llmcpp::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llmcpp
     )
     
     # Examples (optional)
-    option(JUCE_LLM_CLIENT_BUILD_EXAMPLES "Build examples" OFF)
-    if(JUCE_LLM_CLIENT_BUILD_EXAMPLES)
+    option(LLMCPP_BUILD_EXAMPLES "Build examples" OFF)
+    if(LLMCPP_BUILD_EXAMPLES)
         add_subdirectory(examples)
     endif()
     
     # Tests (optional)
-    option(JUCE_LLM_CLIENT_BUILD_TESTS "Build tests" OFF)
-    if(JUCE_LLM_CLIENT_BUILD_TESTS)
+    option(LLMCPP_BUILD_TESTS "Build tests" OFF)
+    if(LLMCPP_BUILD_TESTS)
+        enable_testing()
         add_subdirectory(tests)
     endif()
 endif()
