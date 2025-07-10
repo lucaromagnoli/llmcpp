@@ -30,6 +30,7 @@ add_library(llmcpp STATIC
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
     src/openai/OpenAIClient.cpp
+    src/openai/OpenAIResponsesApi.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAIUtils.cpp
     src/providers/ClientFactory.cpp
@@ -42,9 +43,12 @@ target_include_directories(llmcpp PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-# Link dependencies
+# Link dependencies - nlohmann_json needs to be PUBLIC since it's used in headers
 target_link_libraries(llmcpp PUBLIC
     nlohmann_json::nlohmann_json
+)
+
+target_link_libraries(llmcpp PRIVATE
     httplib::httplib
 )
 
@@ -61,7 +65,7 @@ target_link_libraries(llmcpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(GNUInstallDirs)
     
-    install(TARGETS llmcpp
+    install(TARGETS llmcpp nlohmann_json
         EXPORT llmcpp-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}

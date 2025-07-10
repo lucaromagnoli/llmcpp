@@ -1,6 +1,7 @@
 #pragma once
-#include <juce_core/juce_core.h>
 #include "LLMTypes.h"
+#include <string>
+#include <vector>
 
 /**
  * Abstract base class for any LLM client (OpenAI, Anthropic, local models, etc)
@@ -27,15 +28,15 @@ public:
     /**
      * Get available models for this client
      */
-    [[nodiscard]] virtual juce::StringArray getAvailableModels() const { return {}; }
+    virtual std::vector<std::string> getAvailableModels() const { return {}; }
     
     /**
      * Check if the client supports streaming
      */
-    [[nodiscard]] virtual bool supportsStreaming() const { return false; }
+    virtual bool supportsStreaming() const { return false; }
     
     /**
      * Get the client name/type
      */
-    [[nodiscard]] virtual juce::String getClientName() const = 0;
+    virtual std::string getClientName() const = 0;
 }; 
