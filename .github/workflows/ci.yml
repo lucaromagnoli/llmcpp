@@ -33,14 +33,19 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         choco install cmake ninja
-        choco install openssl --version=3.1.1
+
+    - name: Setup vcpkg and OpenSSL (Windows)
+      if: matrix.os == 'windows-latest'
+      timeout-minutes: 20
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg.exe install openssl:x64-windows
 
     - name: Setup OpenSSL (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        echo "OPENSSL_ROOT_DIR=C:/tools/openssl" >> $env:GITHUB_ENV
-        echo "OPENSSL_INCLUDE_DIR=C:/tools/openssl/include" >> $env:GITHUB_ENV
-        echo "OPENSSL_LIBRARIES=C:/tools/openssl/lib" >> $env:GITHUB_ENV
+        echo "CMAKE_TOOLCHAIN_FILE=${{ github.workspace }}\vcpkg\scripts\buildsystems\vcpkg.cmake" >> $env:GITHUB_ENV
 
     - name: Disable pre-commit hook
       run: |
@@ -55,6 +60,7 @@ jobs:
         cmake -B build -G Ninja
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -DLLMCPP_BUILD_TESTS=ON
+        ${{ matrix.os == 'windows-latest' && format('-DCMAKE_TOOLCHAIN_FILE={0}\vcpkg\scripts\buildsystems\vcpkg.cmake', github.workspace) || '' }}
 
     - name: Build
       timeout-minutes: 15
