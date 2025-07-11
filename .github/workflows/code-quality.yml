@@ -50,4 +50,4 @@ jobs:
         --suppress=missingIncludeSystem
         --error-exitcode=1
         -I include/
-        src/ include/ 
+        src/ include/

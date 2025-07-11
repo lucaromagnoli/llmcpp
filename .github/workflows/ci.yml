@@ -79,4 +79,4 @@ jobs:
         name: build-logs-${{ matrix.os }}-${{ matrix.build_type }}
         path: |
           build/CMakeFiles/*.log
-          build/Testing/Temporary/LastTest.log 
+          build/Testing/Temporary/LastTest.log
