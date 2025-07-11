@@ -25,7 +25,7 @@ int main() {
         config.client = "openai";
         config.model = "gpt-4o-mini";
         config.maxTokens = 100;
-        config.randomness = 0.7f;
+        config.temperature = 0.7f;
 
         // Create request
         LLMRequest request(config, "Hello! Can you tell me a fun fact about C++?");

@@ -324,7 +324,13 @@ void OpenAIResponsesApi::handleApiError(const json& errorResponse) const {
 }
 
 json OpenAIResponsesApi::preprocessRequest(const OpenAI::ResponsesRequest& request) const {
-    return request.toJson();
+    auto requestJson = request.toJson();
+
+    // Debug: Log the actual request being sent
+    std::cout << "🔍 DEBUG: Actual JSON being sent to Responses API:" << std::endl;
+    std::cout << requestJson.dump(2) << std::endl;
+
+    return requestJson;
 }
 
 void OpenAIResponsesApi::addDefaultParameters(json& requestJson) const {
