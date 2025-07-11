@@ -10,11 +10,13 @@
 
 // Core functionality
 #include "core/ClientManager.h"
+#include "core/JsonSchemaBuilder.h"
 #include "core/LLMClient.h"
 #include "core/LLMTypes.h"
 
 // OpenAI provider
 #include "openai/OpenAIClient.h"
+#include "openai/OpenAISchemaBuilder.h"
 #include "openai/OpenAITypes.h"
 
 // Version information
