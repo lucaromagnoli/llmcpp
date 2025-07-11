@@ -1,0 +1,14 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+# Note: Our custom pre-commit hook (pre-commit.legacy) handles:
+# - Build validation
+# - Test execution  
+# - Code formatting (clang-format)
+# - Whitespace checking
+# This minimal config just adds basic file checks without conflicts 
