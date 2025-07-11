@@ -6,19 +6,13 @@
 
 // TODO: When implementing these classes, include their headers here:
 // #include "openai/OpenAIChatCompletionsApi.h"
-// #include "openai/OpenAIHttpClient.h"
+#include "openai/OpenAIHttpClient.h"
 
 // For now, create minimal stub classes to make unique_ptr work
 class OpenAIChatCompletionsApi {
    public:
     OpenAIChatCompletionsApi() = default;
     virtual ~OpenAIChatCompletionsApi() = default;
-};
-
-class OpenAIHttpClient {
-   public:
-    OpenAIHttpClient() = default;
-    virtual ~OpenAIHttpClient() = default;
 };
 
 OpenAIClient::OpenAIClient(const std::string& apiKey)
@@ -145,10 +139,16 @@ OpenAI::ApiType OpenAIClient::getPreferredApiType() const { return preferredApiT
 
 // Private methods (stubs)
 void OpenAIClient::initializeApiHandlers() {
-    // Now we can properly create unique_ptr instances because complete types are available
-    responsesApi_ = std::make_unique<OpenAIResponsesApi>(nullptr);
+    // Create HTTP client with current configuration
+    httpClient_ = std::make_unique<OpenAIHttpClient>(config_);
+
+    // Create shared pointer for API handlers
+    auto sharedHttpClient =
+        std::shared_ptr<OpenAIHttpClient>(httpClient_.get(), [](OpenAIHttpClient*) {});
+
+    // Initialize API handlers with shared HTTP client
+    responsesApi_ = std::make_unique<OpenAIResponsesApi>(sharedHttpClient);
     chatCompletionsApi_ = std::make_unique<OpenAIChatCompletionsApi>();
-    httpClient_ = std::make_unique<OpenAIHttpClient>();
 }
 
 LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {

@@ -30,6 +30,7 @@ add_library(llmcpp STATIC
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
     src/openai/OpenAIClient.cpp
+    src/openai/OpenAIHttpClient.cpp
     src/openai/OpenAIResponsesApi.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAIUtils.cpp
