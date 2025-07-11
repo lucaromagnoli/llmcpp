@@ -53,26 +53,28 @@ debug:
 tests: configure-tests
 	@echo "Building tests..."
 	@cmake --build $(BUILD_DIR)
+	@if [ -f .env ]; then cp .env $(BUILD_DIR)/; fi
 
 .PHONY: configure-tests
-configure-tests: $(BUILD_DIR)
+configure-tests: $(BUILD_DIR)/.created
 	@echo "Configuring build system with tests..."
 	@cmake -B $(BUILD_DIR) $(CMAKE_ARGS) -DLLMCPP_BUILD_TESTS=ON
 
 # Configuration targets
 .PHONY: configure
-configure: $(BUILD_DIR)
+configure: $(BUILD_DIR)/.created
 	@echo "Configuring build system..."
 	@cmake -B $(BUILD_DIR) $(CMAKE_ARGS)
 
-$(BUILD_DIR):
+$(BUILD_DIR)/.created:
 	@mkdir -p $(BUILD_DIR)
+	@touch $(BUILD_DIR)/.created
 
 # Testing targets
 .PHONY: test
 test: tests
 	@echo "Running all tests..."
-	@cd $(BUILD_DIR) && ctest --output-on-failure -C $(BUILD_TYPE)
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests
 
 .PHONY: test-unit
 test-unit: tests
@@ -92,7 +94,7 @@ test-openai: tests
 .PHONY: test-integration
 test-integration: tests
 	@echo "Running integration tests..."
-	@./$(BUILD_DIR)/tests/llmcpp_tests "[integration]"
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests "[integration]"
 
 .PHONY: test-ci
 test-ci: tests
@@ -113,4 +115,4 @@ clean:
 	@rm -rf $(BUILD_DIR)
 
 # Prevent intermediate files from being deleted
-.PRECIOUS: $(BUILD_DIR) 
+.PRECIOUS: $(BUILD_DIR)/.created 
