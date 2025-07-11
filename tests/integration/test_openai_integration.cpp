@@ -211,7 +211,7 @@ TEST_CASE("OpenAI Integration - Responses API specific", "[openai][integration][
 
         LLMRequestConfig config;
         config.client = "openai";
-        config.model = "gpt-4o-mini";
+        config.model = "gpt-4.1";  // Use GPT-4.1 for better structured output support
         config.maxTokens = 100;
         config.temperature = 0.1f;
         config.functionName = "analyze_sentiment";
@@ -305,7 +305,7 @@ TEST_CASE("OpenAI Integration - Schema Builders", "[openai][integration][manual]
 
         LLMRequestConfig config;
         config.client = "openai";
-        config.model = "gpt-4o-mini";
+        config.model = "gpt-4.1";  // Use GPT-4.1 for better structured output support
         config.maxTokens = 200;
         config.temperature = 0.1f;
         config.functionName = "analyze_review";

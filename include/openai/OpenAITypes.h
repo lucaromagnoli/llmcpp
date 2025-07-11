@@ -12,6 +12,105 @@ using json = nlohmann::json;
 
 namespace OpenAI {
 
+/**
+ * OpenAI model names as strongly typed enum
+ * Provides type safety and IDE auto-completion for model selection
+ */
+enum class Model {
+    // GPT-4.1 series (Latest - April 2025)
+    GPT_4_1,  // gpt-4.1 - Latest model with superior coding, instruction following, and structured
+              // outputs
+    GPT_4_1_Mini,  // gpt-4.1-mini - Balanced performance and cost, beats gpt-4o in many benchmarks
+    GPT_4_1_Nano,  // gpt-4.1-nano - Fastest and cheapest option for simple tasks
+
+    // GPT-4o series
+    GPT_4o,       // gpt-4o - Good balance of performance and cost
+    GPT_4o_Mini,  // gpt-4o-mini - Cost-effective for basic tasks
+
+    // GPT-4.5 series (being deprecated)
+    GPT_4_5,  // gpt-4.5 - Preview model (deprecated July 2025)
+
+    // GPT-3.5 series (legacy)
+    GPT_3_5_Turbo,  // gpt-3.5-turbo - Legacy model
+
+    // Custom/Other
+    Custom  // For custom model names not in this enum
+};
+
+/**
+ * Convert OpenAI Model enum to API string
+ */
+inline std::string toString(Model model) {
+    switch (model) {
+        case Model::GPT_4_1:
+            return "gpt-4.1";
+        case Model::GPT_4_1_Mini:
+            return "gpt-4.1-mini";
+        case Model::GPT_4_1_Nano:
+            return "gpt-4.1-nano";
+        case Model::GPT_4o:
+            return "gpt-4o";
+        case Model::GPT_4o_Mini:
+            return "gpt-4o-mini";
+        case Model::GPT_4_5:
+            return "gpt-4.5";
+        case Model::GPT_3_5_Turbo:
+            return "gpt-3.5-turbo";
+        case Model::Custom:
+            return "custom";
+    }
+    return "unknown";
+}
+
+/**
+ * Convert API string to OpenAI Model enum
+ */
+inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "gpt-4.1") return Model::GPT_4_1;
+    if (modelStr == "gpt-4.1-mini") return Model::GPT_4_1_Mini;
+    if (modelStr == "gpt-4.1-nano") return Model::GPT_4_1_Nano;
+    if (modelStr == "gpt-4o") return Model::GPT_4o;
+    if (modelStr == "gpt-4o-mini") return Model::GPT_4o_Mini;
+    if (modelStr == "gpt-4.5") return Model::GPT_4_5;
+    if (modelStr == "gpt-3.5-turbo") return Model::GPT_3_5_Turbo;
+    return Model::Custom;
+}
+
+/**
+ * Check if model supports structured outputs via Responses API
+ */
+inline bool supportsStructuredOutputs(Model model) {
+    switch (model) {
+        case Model::GPT_4_1:
+        case Model::GPT_4_1_Mini:
+        case Model::GPT_4_1_Nano:
+        case Model::GPT_4o:
+        case Model::GPT_4o_Mini:
+        case Model::GPT_4_5:
+            return true;
+        case Model::GPT_3_5_Turbo:
+        case Model::Custom:
+            return false;
+    }
+    return false;
+}
+
+/**
+ * Get recommended model for specific use cases
+ */
+inline Model getRecommendedModel(const std::string& useCase) {
+    if (useCase == "coding" || useCase == "structured_output") {
+        return Model::GPT_4_1;
+    } else if (useCase == "cost_effective") {
+        return Model::GPT_4_1_Mini;
+    } else if (useCase == "fastest" || useCase == "classification") {
+        return Model::GPT_4_1_Nano;
+    } else if (useCase == "general") {
+        return Model::GPT_4o;
+    }
+    return Model::GPT_4_1_Mini;  // Default balanced choice
+}
+
 // OpenAI-specific simple message structure for convenience
 struct Message {
     std::string role;  // "user", "assistant", "system"
