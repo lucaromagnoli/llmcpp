@@ -38,8 +38,12 @@ static void loadEnvFile(const std::string& filepath = ".env") {
                 value = value.substr(1, value.size() - 2);
             }
 
-            // Set environment variable
+            // Set environment variable (cross-platform)
+#ifdef _WIN32
+            _putenv_s(key.c_str(), value.c_str());
+#else
             setenv(key.c_str(), value.c_str(), 1);
+#endif
         }
     }
 }
