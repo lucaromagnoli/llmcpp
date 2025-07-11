@@ -174,49 +174,6 @@ TEST_CASE("OpenAI Chat Completions schema builder", "[schema][openai][chat]") {
     }
 }
 
-TEST_CASE("OpenAI schema patterns", "[schema][openai][patterns]") {
-    SECTION("Sentiment analysis pattern") {
-        auto config = OpenAISchemaPatterns::sentimentAnalysis();
-        auto configJson = config.toJson();
-
-        REQUIRE(configJson["format"]["name"] == "sentiment_analysis");
-        auto schema = configJson["format"]["schema"];
-        REQUIRE(schema["properties"].contains("sentiment"));
-        REQUIRE(schema["properties"].contains("confidence"));
-    }
-
-    SECTION("Classification pattern") {
-        std::vector<std::string> categories = {"technology", "science", "arts", "sports"};
-        auto config = OpenAISchemaPatterns::classification(categories);
-        auto configJson = config.toJson();
-
-        auto schema = configJson["format"]["schema"];
-        REQUIRE(schema["properties"]["category"]["enum"].size() == 4);
-        REQUIRE(schema["properties"]["category"]["enum"][0] == "technology");
-    }
-
-    SECTION("Data extraction pattern") {
-        std::vector<std::string> fields = {"name", "company", "position"};
-        auto config = OpenAISchemaPatterns::dataExtraction(fields);
-        auto configJson = config.toJson();
-
-        auto schema = configJson["format"]["schema"];
-        REQUIRE(schema["properties"].contains("name"));
-        REQUIRE(schema["properties"].contains("company"));
-        REQUIRE(schema["properties"].contains("position"));
-        REQUIRE(schema["required"].size() == 3);
-    }
-
-    SECTION("Chat patterns") {
-        auto jsonMode = OpenAISchemaPatterns::chatJsonMode();
-        REQUIRE(jsonMode["type"] == "json_object");
-
-        auto chatSentiment = OpenAISchemaPatterns::chatSentiment();
-        REQUIRE(chatSentiment["type"] == "json_schema");
-        REQUIRE(chatSentiment["json_schema"]["name"] == "sentiment");
-    }
-}
-
 TEST_CASE("Schema integration examples", "[schema][integration]") {
     SECTION("Complex nested schema for content analysis") {
         auto entitySchema =

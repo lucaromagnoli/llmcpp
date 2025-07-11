@@ -19,6 +19,51 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    # Cache vcpkg packages (Windows)
+    - name: Cache vcpkg packages
+      if: matrix.os == 'windows-latest'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg
+          ${{ github.workspace }}/vcpkg_installed
+        key: vcpkg-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          vcpkg-${{ matrix.os }}-
+
+    # Cache CMake build directory
+    - name: Cache CMake build
+      uses: actions/cache@v4
+      with:
+        path: |
+          build
+          !build/tests/llmcpp_tests
+          !build/examples
+        key: cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
+        restore-keys: |
+          cmake-${{ matrix.os }}-${{ matrix.build_type }}-
+
+    # Cache package manager dependencies
+    - name: Cache Homebrew (macOS)
+      if: matrix.os == 'macos-latest'
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/Homebrew
+          /opt/homebrew/Cellar
+        key: homebrew-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: homebrew-
+
+    - name: Cache apt packages (Linux)
+      if: matrix.os == 'ubuntu-22.04'
+      uses: actions/cache@v4
+      with:
+        path: |
+          /var/cache/apt
+          /var/lib/apt
+        key: apt-${{ hashFiles('.github/workflows/ci.yml') }}
+        restore-keys: apt-
+
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: brew install cmake ninja
@@ -63,7 +108,7 @@ jobs:
 
     - name: Build
       timeout-minutes: 15
-      run: cmake --build build --config ${{ matrix.build_type }}
+      run: cmake --build build --config ${{ matrix.build_type }} --parallel
 
     - name: Test
       working-directory: build
