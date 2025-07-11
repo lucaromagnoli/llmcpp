@@ -28,7 +28,7 @@ int main() {
     config.client = "openai";
     config.model = "gpt-4o-mini";
     config.maxTokens = 100;
-    config.randomness = 0.7f;
+    config.temperature = 0.7f;
 
     // Create and send request
     LLMRequest request(config, "Hello! How are you?");
@@ -184,7 +184,7 @@ OpenAIClient client("your-api-key-here");
 LLMRequestConfig config;
 config.model = "gpt-4o-mini";     // Model name
 config.maxTokens = 500;           // Max response tokens
-config.randomness = 0.7f;         // Temperature (0.0 - 1.0)
+config.temperature = 0.7f;         // Temperature (0.0 - 1.0)
 config.functionName = "my_func";  // Function name for structured outputs
 ```
 
