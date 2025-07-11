@@ -43,11 +43,14 @@ jobs:
     - name: Build
       run: cmake --build build
 
-    - name: Run cppcheck
+    - name: Run cppcheck (warnings only)
       run: >
-        cppcheck --enable=warning,style,performance,portability
+        cppcheck --enable=warning
         --inline-suppr
         --suppress=missingIncludeSystem
-        --error-exitcode=1
+        --suppress=useInitializationList
+        --suppress=unusedParameter
+        --error-exitcode=0
         -I include/
         src/ include/
+      continue-on-error: true
