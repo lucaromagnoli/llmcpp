@@ -7,13 +7,6 @@
 
 using json = nlohmann::json;
 
-// Forward declaration for OpenAI model enum
-namespace OpenAI {
-enum class Model;
-std::string toString(Model model);
-Model modelFromString(const std::string& modelStr);
-}  // namespace OpenAI
-
 // Input type using standard C++ vectors instead of JUCE StringArray
 using LLMInput = std::vector<std::string>;
 
@@ -86,8 +79,7 @@ inline std::string toString(ResponsesSchemaName schemaName) {
 /// Represents the configuration for the LLM
 struct LLMRequestConfig {
     std::string client;
-    std::string model;  // String model name (for backward compatibility and non-OpenAI providers)
-    std::optional<OpenAI::Model> openaiModel;   // OpenAI-specific model enum (preferred for OpenAI)
+    std::string model;                          // String model name (works with any provider)
     std::string functionName = "llm_function";  // Default function name for LLM calls
     std::string jsonSchema;
     std::optional<json> schemaObject;  // Structured schema data
@@ -95,25 +87,10 @@ struct LLMRequestConfig {
     float temperature = 0.8f;
     int maxTokens = 200;
 
-    // Convenience methods for OpenAI model enum
-    void setModel(OpenAI::Model openaiModelEnum) {
-        openaiModel = openaiModelEnum;
-        model = OpenAI::toString(openaiModelEnum);
-    }
+    // Convenience method for any model name
+    void setModel(const std::string& modelName) { model = modelName; }
 
-    void setModel(const std::string& modelName) {
-        model = modelName;
-        if (client == "openai") {
-            openaiModel = OpenAI::modelFromString(modelName);
-        }
-    }
-
-    std::string getModelString() const {
-        if (openaiModel.has_value()) {
-            return OpenAI::toString(openaiModel.value());
-        }
-        return model;
-    }
+    std::string getModelString() const { return model; }
 
     // Add more configuration options as needed (e.g., top_p, stop sequences, etc.)
 
