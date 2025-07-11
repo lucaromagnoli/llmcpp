@@ -182,16 +182,18 @@ bool OpenAIResponsesApi::validateRequest(const OpenAI::ResponsesRequest& request
     }
 
     // Validate input
-    try {
-        auto inputJson = request.input.toJson();
-        if (inputJson.is_null() ||
-            (inputJson.is_string() && inputJson.get<std::string>().empty())) {
-            errorMessage = "Input cannot be empty";
+    if (request.input.has_value()) {
+        try {
+            auto inputJson = request.input->toJson();
+            if (inputJson.is_null() ||
+                (inputJson.is_string() && inputJson.get<std::string>().empty())) {
+                errorMessage = "Input cannot be empty";
+                return false;
+            }
+        } catch (const std::exception& e) {
+            errorMessage = "Invalid input format: " + std::string(e.what());
             return false;
         }
-    } catch (const std::exception& e) {
-        errorMessage = "Invalid input format: " + std::string(e.what());
-        return false;
     }
 
     // Validate optional parameters
