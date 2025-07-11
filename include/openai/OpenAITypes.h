@@ -592,8 +592,8 @@ inline ResponseStatus responseStatusFromString(const std::string& str) {
 // Responses API request (complete implementation)
 struct ResponsesRequest {
     // Required fields
-    ResponsesInput input;
-    std::string model = "gpt-4o";
+    std::string model;
+    std::optional<ResponsesInput> input;
 
     // Optional configuration
     std::optional<std::vector<std::string>> include;  // What to include in response
@@ -615,9 +615,8 @@ struct ResponsesRequest {
     std::optional<std::string> reasoningEffort;  // "low", "medium", "high" for reasoning models
 
     json toJson() const {
-        json j = {
-            {"model", model}, {"input", input.toJson()}, {"tool_choice", toString(toolChoice)}};
-
+        json j = {{"model", model}, {"tool_choice", toString(toolChoice)}};
+        if (input) j["input"] = input->toJson();
         if (include) j["include"] = *include;
         if (instructions) j["instructions"] = *instructions;
         if (maxOutputTokens) j["max_output_tokens"] = *maxOutputTokens;
@@ -633,7 +632,6 @@ struct ResponsesRequest {
         if (truncation) j["truncation"] = *truncation;
         if (user) j["user"] = *user;
         if (reasoningEffort) j["reasoning_effort"] = *reasoningEffort;
-
         if (tools) {
             json toolsArray = json::array();
             for (const auto& tool : *tools) {
@@ -642,7 +640,6 @@ struct ResponsesRequest {
             }
             j["tools"] = toolsArray;
         }
-
         return j;
     }
 
@@ -957,43 +954,32 @@ inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& reque
         responsesReq.instructions = request.prompt;
     }
 
-    // Handle different contextData formats
-    if (!request.contextData.is_null()) {
-        if (request.contextData.is_string()) {
-            // Simple string context
-            InputMessage userMsg;
-            userMsg.role = InputMessage::Role::User;
-            userMsg.content = request.contextData.get<std::string>();
-
-            std::vector<InputMessage> messages = {userMsg};
-            responsesReq.input = ResponsesInput::fromContentList(messages);
-        } else if (request.contextData.is_array()) {
-            // Array of OpenAI Messages
-            std::vector<InputMessage> messages;
-            for (const auto& msgJson : request.contextData) {
-                InputMessage inputMsg;
-                inputMsg.role = InputMessage::stringToRole(msgJson.at("role").get<std::string>());
-                inputMsg.content = msgJson.at("content").get<std::string>();
-                messages.push_back(inputMsg);
+    // Map context to OpenAI inputValues
+    if (!request.context.empty()) {
+        // Convert context (vector of json) to InputMessages
+        std::vector<InputMessage> messages;
+        for (const auto& contextItem : request.context) {
+            if (contextItem.is_object() && contextItem.contains("role") &&
+                contextItem.contains("content")) {
+                InputMessage msg;
+                msg.role = InputMessage::stringToRole(contextItem["role"].get<std::string>());
+                msg.content = contextItem["content"].get<std::string>();
+                messages.push_back(msg);
+            } else {
+                // If it's not a proper message format, treat as user message
+                InputMessage msg;
+                msg.role = InputMessage::Role::User;
+                msg.content = contextItem.dump();
+                messages.push_back(msg);
             }
-            responsesReq.input = ResponsesInput::fromContentList(messages);
-        } else {
-            // Fallback: use prompt as user message
-            InputMessage userMsg;
-            userMsg.role = InputMessage::Role::User;
-            userMsg.content = request.prompt;
-
-            std::vector<InputMessage> messages = {userMsg};
-            responsesReq.input = ResponsesInput::fromContentList(messages);
         }
-    } else {
-        // No context data: use prompt as user message
-        InputMessage userMsg;
-        userMsg.role = InputMessage::Role::User;
-        userMsg.content = request.prompt;
-
-        std::vector<InputMessage> messages = {userMsg};
         responsesReq.input = ResponsesInput::fromContentList(messages);
+    } else if (!request.prompt.empty()) {
+        // If context is empty but prompt is present, use prompt as input
+        responsesReq.input = ResponsesInput::fromText(request.prompt);
+    } else {
+        // If both context and prompt are empty, do not set input at all
+        responsesReq.input = std::nullopt;
     }
     responsesReq.toolChoice =
         ToolChoiceMode::Auto;  // Explicitly initialize to fix cppcheck warning

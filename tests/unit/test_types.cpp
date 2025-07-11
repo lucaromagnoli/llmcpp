@@ -26,22 +26,23 @@ TEST_CASE("LLMRequest construction with required parameters") {
     REQUIRE(request.config.model == "test_model");
     REQUIRE(request.config.maxTokens == 100);
     REQUIRE(request.prompt == "Hello");
-    REQUIRE(request.inputValues.empty());
+    REQUIRE(request.context.empty());
 }
 
-TEST_CASE("LLMRequest construction with input values") {
+TEST_CASE("LLMRequest construction with context") {
     LLMRequestConfig config;
     config.client = "test_client";
     config.model = "test_model";
 
-    LLMInput inputValues = {"input1", "input2"};
-    LLMRequest request(config, "Hello", inputValues);
+    LLMContext context = {json{{"role", "user"}, {"content", "input1"}},
+                          json{{"role", "user"}, {"content", "input2"}}};
+    LLMRequest request(config, "Hello", context);
 
     REQUIRE(request.config.client == "test_client");
     REQUIRE(request.prompt == "Hello");
-    REQUIRE(request.inputValues.size() == 2);
-    REQUIRE(request.inputValues[0] == "input1");
-    REQUIRE(request.inputValues[1] == "input2");
+    REQUIRE(request.context.size() == 2);
+    REQUIRE(request.context[0]["content"] == "input1");
+    REQUIRE(request.context[1]["content"] == "input2");
 }
 
 TEST_CASE("LLMRequest toString") {
@@ -50,8 +51,9 @@ TEST_CASE("LLMRequest toString") {
     config.model = "test_model";
     config.maxTokens = 100;
 
-    LLMInput inputValues = {"input1", "input2"};
-    LLMRequest request(config, "Hello", inputValues);
+    LLMContext context = {json{{"role", "user"}, {"content", "input1"}},
+                          json{{"role", "user"}, {"content", "input2"}}};
+    LLMRequest request(config, "Hello", context);
 
     std::string result = request.toString();
 
@@ -128,7 +130,7 @@ TEST_CASE("LLMRequest with previous response") {
     config.client = "openai";
     config.model = "gpt-4o";
 
-    LLMRequest request(config, "Follow up question", {}, "previous-response-id");
+    LLMRequest request(config, "Follow up question", LLMContext{}, "previous-response-id");
 
     REQUIRE(request.prompt == "Follow up question");
     REQUIRE(request.previousResponseId == "previous-response-id");
