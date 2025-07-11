@@ -36,16 +36,13 @@ jobs:
         cmake: true
         ninja: true
 
-    # Use proven vcpkg action with proper caching
+    # Simple vcpkg setup that works with manifest mode
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
-      uses: johnwason/vcpkg-action@v7
-      id: vcpkg
+      uses: lukka/run-vcpkg@v11
       with:
-        pkgs: openssl
-        triplet: x64-windows-release
-        cache-key: ${{ runner.os }}
-        token: ${{ github.token }}
+        # Let vcpkg.json manifest handle dependencies
+        vcpkgJsonGlob: '**/vcpkg.json'
 
     - name: Disable pre-commit hook
       run: |
@@ -57,7 +54,7 @@ jobs:
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 
     - name: Configure CMake (Non-Windows)
       if: matrix.os != 'windows-latest'
