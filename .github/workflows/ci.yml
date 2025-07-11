@@ -36,50 +36,16 @@ jobs:
         cmake: true
         ninja: true
 
-    # Comprehensive Windows caching strategy
-    - name: Cache vcpkg binary cache (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: actions/cache@v4
-      with:
-        path: |
-          ${{ env.VCPKG_ROOT }}/archives
-          ~/.cache/vcpkg/archives
-        key: ${{ runner.os }}-vcpkg-binary-${{ hashFiles('**/vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-binary-
-
-    - name: Cache vcpkg build trees (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: actions/cache@v4
-      with:
-        path: |
-          ${{ env.VCPKG_ROOT }}/buildtrees
-          ${{ env.VCPKG_ROOT }}/packages
-        key: ${{ runner.os }}-vcpkg-buildtrees-${{ hashFiles('**/vcpkg.json') }}-${{ hashFiles('**/.github/workflows/ci.yml') }}
-        restore-keys: |
-          ${{ runner.os }}-vcpkg-buildtrees-${{ hashFiles('**/vcpkg.json') }}-
-          ${{ runner.os }}-vcpkg-buildtrees-
-
+    # Use proven vcpkg action with proper caching
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
-      uses: lukka/run-vcpkg@v11
-      env:
-        # Enable binary caching to drastically speed up builds
-        VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      uses: johnwason/vcpkg-action@v7
+      id: vcpkg
       with:
-        vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'
-        runVcpkgInstall: true
-        vcpkgJsonGlob: '**/vcpkg.json'
-
-    # Cache CMake build directory for faster incremental builds
-    - name: Cache CMake build directory
-      uses: actions/cache@v4
-      with:
-        path: build
-        key: ${{ runner.os }}-${{ matrix.build_type }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}-${{ hashFiles('**/vcpkg.json') }}
-        restore-keys: |
-          ${{ runner.os }}-${{ matrix.build_type }}-cmake-${{ hashFiles('**/CMakeLists.txt') }}-
-          ${{ runner.os }}-${{ matrix.build_type }}-cmake-
+        pkgs: openssl
+        triplet: x64-windows-release
+        cache-key: ${{ runner.os }}
+        token: ${{ github.token }}
 
     - name: Disable pre-commit hook
       run: |
@@ -91,7 +57,7 @@ jobs:
     - name: Configure CMake (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON ${{ steps.vcpkg.outputs.vcpkg-cmake-config }}
 
     - name: Configure CMake (Non-Windows)
       if: matrix.os != 'windows-latest'
@@ -99,7 +65,7 @@ jobs:
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON
 
     - name: Build
-      timeout-minutes: 20
+      timeout-minutes: 15
       run: cmake --build build --config ${{ matrix.build_type }}
 
     - name: Test
