@@ -182,11 +182,19 @@ OpenAIClient client("your-api-key-here");
 
 ```cpp
 LLMRequestConfig config;
-config.model = "gpt-4o-mini";     // Model name
+config.model = "gpt-4o-mini";     // Model name - cost-effective for basic tasks
 config.maxTokens = 500;           // Max response tokens
 config.temperature = 0.7f;         // Temperature (0.0 - 1.0)
 config.functionName = "my_func";  // Function name for structured outputs
 ```
+
+#### Recommended Models
+
+- **`gpt-4.1`**: Latest model with superior coding, instruction following, and structured outputs (1M context)
+- **`gpt-4.1-mini`**: Balanced performance and cost, beats gpt-4o in many benchmarks
+- **`gpt-4.1-nano`**: Fastest and cheapest option for simple tasks like classification
+- **`gpt-4o-mini`**: Cost-effective for basic text completion tasks
+- **`gpt-4o`**: Good balance of performance and cost for general use
 
 ## Testing
 
