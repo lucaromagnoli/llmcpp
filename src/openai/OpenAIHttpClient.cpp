@@ -149,8 +149,7 @@ class OpenAIHttpClient::HttpClientImpl {
 
 // OpenAIHttpClient implementation
 OpenAIHttpClient::OpenAIHttpClient(const OpenAI::OpenAIConfig& config)
-    : config_(config), userAgent_("llmcpp/1.0.0") {
-    impl_ = std::make_unique<HttpClientImpl>(config);
+    : config_(config), userAgent_("llmcpp/1.0.0"), impl_(std::make_unique<HttpClientImpl>(config)) {
     validateConfig();
 }
 
