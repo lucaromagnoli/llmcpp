@@ -36,12 +36,12 @@ jobs:
         cmake: true
         ninja: true
 
+    # Simple vcpkg setup that works with manifest mode
     - name: Setup vcpkg (Windows)
       if: matrix.os == 'windows-latest'
       uses: lukka/run-vcpkg@v11
       with:
-        vcpkgGitCommitId: 'f7423ee180c4b7f40d43402c2feb3859161ef625'
-        runVcpkgInstall: true
+        # Let vcpkg.json manifest handle dependencies
         vcpkgJsonGlob: '**/vcpkg.json'
 
     - name: Disable pre-commit hook
@@ -68,7 +68,9 @@ jobs:
     - name: Test
       working-directory: build
       timeout-minutes: 10
-      run: ctest --output-on-failure -C ${{ matrix.build_type }}
+      run: |
+        echo "Running CI-safe tests (excluding integration tests)..."
+        ./tests/llmcpp_tests "~[integration]" --reporter compact
 
     - name: Upload build artifacts
       if: failure()
@@ -77,4 +79,4 @@ jobs:
         name: build-logs-${{ matrix.os }}-${{ matrix.build_type }}
         path: |
           build/CMakeFiles/*.log
-          build/Testing/Temporary/LastTest.log 
+          build/Testing/Temporary/LastTest.log

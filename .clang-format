@@ -94,4 +94,4 @@ PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 200
 PointerAlignment: Left
 ReflowComments: true
-Standard: Latest 
+Standard: Latest

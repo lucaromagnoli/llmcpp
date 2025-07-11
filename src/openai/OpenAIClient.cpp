@@ -1,24 +1,19 @@
 #include "openai/OpenAIClient.h"
 
+#include <algorithm>
+#include <future>
 #include <stdexcept>
 
 #include "openai/OpenAIResponsesApi.h"
 
-// TODO: When implementing these classes, include their headers here:
 // #include "openai/OpenAIChatCompletionsApi.h"
-// #include "openai/OpenAIHttpClient.h"
+#include "openai/OpenAIHttpClient.h"
 
 // For now, create minimal stub classes to make unique_ptr work
 class OpenAIChatCompletionsApi {
    public:
     OpenAIChatCompletionsApi() = default;
     virtual ~OpenAIChatCompletionsApi() = default;
-};
-
-class OpenAIHttpClient {
-   public:
-    OpenAIHttpClient() = default;
-    virtual ~OpenAIHttpClient() = default;
 };
 
 OpenAIClient::OpenAIClient(const std::string& apiKey)
@@ -42,14 +37,14 @@ OpenAIClient& OpenAIClient::operator=(OpenAIClient&& other) noexcept = default;
 
 // LLMClient interface implementation
 void OpenAIClient::sendRequest(const LLMRequest& request, LLMResponseCallback callback) {
-    // TODO: Implement async request
-    throw std::runtime_error("OpenAIClient::sendRequest not yet implemented");
+    auto future = routeRequestAsync(request, callback);
+    // Don't wait for the result in the async version - just fire and forget
 }
 
 void OpenAIClient::sendStreamingRequest(const LLMRequest& request, LLMResponseCallback onDone,
                                         LLMStreamCallback onChunk) {
-    // TODO: Implement streaming request
-    throw std::runtime_error("OpenAIClient::sendStreamingRequest not yet implemented");
+    auto future = routeStreamingRequest(request, onChunk, onDone);
+    // Don't wait for the result in the async version - just fire and forget
 }
 
 std::vector<std::string> OpenAIClient::getAvailableModels() const {
@@ -112,16 +107,34 @@ json OpenAIClient::getClientConfig() const {
                 {"project", config_.project}};
 }
 
-// OpenAI-specific methods (stubs)
+// OpenAI-specific methods - now implemented using real API
 OpenAI::ResponsesResponse OpenAIClient::sendResponsesRequest(
     const OpenAI::ResponsesRequest& request) {
-    throw std::runtime_error("OpenAIClient::sendResponsesRequest not yet implemented");
+    if (!responsesApi_) {
+        throw std::runtime_error("Responses API not initialized");
+    }
+
+    std::string errorMessage;
+    if (!responsesApi_->validateRequest(request, errorMessage)) {
+        throw std::invalid_argument("Invalid request: " + errorMessage);
+    }
+
+    return responsesApi_->create(request);
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIClient::sendResponsesRequestAsync(
     const OpenAI::ResponsesRequest& request,
     std::function<void(const OpenAI::ResponsesResponse&)> callback) {
-    throw std::runtime_error("OpenAIClient::sendResponsesRequestAsync not yet implemented");
+    if (!responsesApi_) {
+        throw std::runtime_error("Responses API not initialized");
+    }
+
+    std::string errorMessage;
+    if (!responsesApi_->validateRequest(request, errorMessage)) {
+        throw std::invalid_argument("Invalid request: " + errorMessage);
+    }
+
+    return responsesApi_->createAsync(request, callback);
 }
 
 OpenAI::ChatCompletionResponse OpenAIClient::sendChatCompletion(
@@ -143,25 +156,105 @@ void OpenAIClient::setPreferredApiType(OpenAI::ApiType apiType) { preferredApiTy
 
 OpenAI::ApiType OpenAIClient::getPreferredApiType() const { return preferredApiType_; }
 
-// Private methods (stubs)
+// Private methods - now implemented with real routing
 void OpenAIClient::initializeApiHandlers() {
-    // Now we can properly create unique_ptr instances because complete types are available
-    responsesApi_ = std::make_unique<OpenAIResponsesApi>(nullptr);
+    // Create HTTP client with current configuration
+    httpClient_ = std::make_unique<OpenAIHttpClient>(config_);
+
+    // Create shared pointer for API handlers
+    auto sharedHttpClient =
+        std::shared_ptr<OpenAIHttpClient>(httpClient_.get(), [](OpenAIHttpClient*) {});
+
+    // Initialize API handlers with shared HTTP client
+    responsesApi_ = std::make_unique<OpenAIResponsesApi>(sharedHttpClient);
     chatCompletionsApi_ = std::make_unique<OpenAIChatCompletionsApi>();
-    httpClient_ = std::make_unique<OpenAIHttpClient>();
 }
 
 LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
-    throw std::runtime_error("OpenAIClient::routeRequest not yet implemented");
+    try {
+        // Detect which API to use
+        OpenAI::ApiType apiType = detectApiType(request);
+
+        if (preferredApiType_ != OpenAI::ApiType::AUTO_DETECT) {
+            apiType = preferredApiType_;
+        }
+
+        // Route to appropriate API
+        if (apiType == OpenAI::ApiType::RESPONSES || apiType == OpenAI::ApiType::AUTO_DETECT) {
+            // Use Responses API (preferred for modern features)
+            auto responsesRequest = OpenAI::ResponsesRequest::fromLLMRequest(request);
+            auto responsesResponse = sendResponsesRequest(responsesRequest);
+            return responsesResponse.toLLMResponse();
+        } else if (apiType == OpenAI::ApiType::CHAT_COMPLETIONS) {
+            // Chat Completions API - not yet implemented
+            throw std::runtime_error("Chat Completions API not yet implemented");
+        } else {
+            throw std::runtime_error("Unknown API type");
+        }
+
+    } catch (const std::exception& e) {
+        LLMResponse errorResponse;
+        errorResponse.success = false;
+        errorResponse.errorMessage = e.what();
+
+        // Try to preserve any error details in the result
+        try {
+            // Check if the error message contains JSON
+            std::string errorMsg = e.what();
+            if (errorMsg.find("{") != std::string::npos) {
+                auto start = errorMsg.find("{");
+                auto jsonPart = errorMsg.substr(start);
+                errorResponse.result = json::parse(jsonPart);
+            }
+        } catch (...) {
+            // If JSON parsing fails, just keep the error message
+        }
+
+        return errorResponse;
+    }
 }
 
 std::future<LLMResponse> OpenAIClient::routeRequestAsync(const LLMRequest& request,
                                                          LLMResponseCallback callback) {
-    throw std::runtime_error("OpenAIClient::routeRequestAsync not yet implemented");
+    return std::async(std::launch::async, [this, request, callback]() {
+        auto response = routeRequest(request);
+        if (callback) {
+            callback(response);
+        }
+        return response;
+    });
 }
 
 std::future<LLMResponse> OpenAIClient::routeStreamingRequest(const LLMRequest& request,
                                                              LLMStreamCallback streamCallback,
                                                              LLMResponseCallback finalCallback) {
-    throw std::runtime_error("OpenAIClient::routeStreamingRequest not yet implemented");
+    return std::async(std::launch::async, [this, request, streamCallback, finalCallback]() {
+        try {
+            // For now, implement streaming as regular request with callback
+            // Real streaming will be implemented when Responses API streaming is ready
+            auto response = routeRequest(request);
+
+            if (streamCallback && response.success) {
+                // Simulate streaming by sending the complete response
+                streamCallback(response.result.dump());
+            }
+
+            if (finalCallback) {
+                finalCallback(response);
+            }
+
+            return response;
+
+        } catch (const std::exception& e) {
+            LLMResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.errorMessage = e.what();
+
+            if (finalCallback) {
+                finalCallback(errorResponse);
+            }
+
+            return errorResponse;
+        }
+    });
 }

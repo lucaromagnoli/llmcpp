@@ -1,7 +1,9 @@
 #pragma once
 #include <functional>
+#include <future>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 #include "openai/OpenAITypes.h"
 
@@ -11,6 +13,7 @@
 class OpenAIHttpClient {
    public:
     explicit OpenAIHttpClient(const OpenAI::OpenAIConfig& config);
+    ~OpenAIHttpClient();  // Destructor must be declared for Pimpl idiom
 
     /**
      * HTTP Response structure
