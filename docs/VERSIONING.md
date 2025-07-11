@@ -9,7 +9,7 @@ MAJOR.MINOR.PATCH[-PRERELEASE]
 ```
 
 - **MAJOR**: Incompatible API changes
-- **MINOR**: Backwards-compatible functionality additions  
+- **MINOR**: Backwards-compatible functionality additions
 - **PATCH**: Backwards-compatible bug fixes
 - **PRERELEASE**: Optional pre-release identifier (alpha, beta, rc)
 
@@ -23,7 +23,7 @@ The easiest way to create a release is using the automated script:
 # Bump patch version (1.0.0 -> 1.0.1)
 ./scripts/release.sh patch
 
-# Bump minor version (1.0.0 -> 1.1.0)  
+# Bump minor version (1.0.0 -> 1.1.0)
 ./scripts/release.sh minor
 
 # Bump major version (1.0.0 -> 2.0.0)
@@ -51,7 +51,7 @@ If you prefer manual control:
    ```bash
    # Update CMakeLists.txt
    sed -i 's/project(llmcpp VERSION [0-9.]*/project(llmcpp VERSION 1.2.0/' CMakeLists.txt
-   
+
    # Update vcpkg.json
    sed -i 's/"version": "[0-9.]*"/"version": "1.2.0"/' vcpkg.json
    ```
@@ -232,4 +232,4 @@ git tag -d v1.2.0
 git push --delete origin v1.2.0
 
 # Delete GitHub release (manual via web interface)
-``` 
+```
