@@ -10,7 +10,7 @@ TEST_CASE("LLMRequestConfig construction") {
     REQUIRE(config.model.empty());
     REQUIRE(config.functionName == "llm_function");
     REQUIRE(config.jsonSchema.empty());
-    REQUIRE(config.randomness == 0.8f);
+    REQUIRE(config.temperature == 0.8f);
     REQUIRE(config.maxTokens == 200);
 }
 
@@ -114,12 +114,12 @@ TEST_CASE("LLMRequestConfig with structured output") {
     config.model = "gpt-4o";
     config.functionName = "extract_data";
     config.jsonSchema = R"({"type": "object", "properties": {"result": {"type": "string"}}})";
-    config.randomness = 0.3f;
+    config.temperature = 0.3f;
     config.maxTokens = 150;
 
     REQUIRE(config.functionName == "extract_data");
     REQUIRE(config.jsonSchema.find("object") != std::string::npos);
-    REQUIRE(config.randomness == Catch::Approx(0.3f));
+    REQUIRE(config.temperature == Catch::Approx(0.3f));
     REQUIRE(config.maxTokens == 150);
 }
 

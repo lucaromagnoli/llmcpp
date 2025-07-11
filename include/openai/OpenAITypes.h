@@ -13,6 +13,120 @@ using json = nlohmann::json;
 namespace OpenAI {
 
 /**
+ * OpenAI model names as strongly typed enum
+ * Provides type safety and IDE auto-completion for model selection
+ */
+enum class Model {
+    // GPT-4.1 series (Latest - April 2025)
+    GPT_4_1,  // gpt-4.1 - Latest model with superior coding, instruction following, and structured
+              // outputs
+    GPT_4_1_Mini,  // gpt-4.1-mini - Balanced performance and cost, beats gpt-4o in many benchmarks
+    GPT_4_1_Nano,  // gpt-4.1-nano - Fastest and cheapest option for simple tasks
+
+    // GPT-4o series
+    GPT_4o,       // gpt-4o - Good balance of performance and cost
+    GPT_4o_Mini,  // gpt-4o-mini - Cost-effective for basic tasks
+
+    // GPT-4.5 series (being deprecated)
+    GPT_4_5,  // gpt-4.5 - Preview model (deprecated July 2025)
+
+    // GPT-3.5 series (legacy)
+    GPT_3_5_Turbo,  // gpt-3.5-turbo - Legacy model
+
+    // Custom/Other
+    Custom  // For custom model names not in this enum
+};
+
+/**
+ * Convert OpenAI Model enum to API string
+ */
+inline std::string toString(Model model) {
+    switch (model) {
+        case Model::GPT_4_1:
+            return "gpt-4.1";
+        case Model::GPT_4_1_Mini:
+            return "gpt-4.1-mini";
+        case Model::GPT_4_1_Nano:
+            return "gpt-4.1-nano";
+        case Model::GPT_4o:
+            return "gpt-4o";
+        case Model::GPT_4o_Mini:
+            return "gpt-4o-mini";
+        case Model::GPT_4_5:
+            return "gpt-4.5";
+        case Model::GPT_3_5_Turbo:
+            return "gpt-3.5-turbo";
+        case Model::Custom:
+            return "custom";
+    }
+    return "unknown";
+}
+
+/**
+ * Convert API string to OpenAI Model enum
+ */
+inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "gpt-4.1") return Model::GPT_4_1;
+    if (modelStr == "gpt-4.1-mini") return Model::GPT_4_1_Mini;
+    if (modelStr == "gpt-4.1-nano") return Model::GPT_4_1_Nano;
+    if (modelStr == "gpt-4o") return Model::GPT_4o;
+    if (modelStr == "gpt-4o-mini") return Model::GPT_4o_Mini;
+    if (modelStr == "gpt-4.5") return Model::GPT_4_5;
+    if (modelStr == "gpt-3.5-turbo") return Model::GPT_3_5_Turbo;
+    return Model::Custom;
+}
+
+/**
+ * Check if model supports structured outputs via Responses API
+ */
+inline bool supportsStructuredOutputs(Model model) {
+    switch (model) {
+        case Model::GPT_4_1:
+        case Model::GPT_4_1_Mini:
+        case Model::GPT_4_1_Nano:
+        case Model::GPT_4o:
+        case Model::GPT_4o_Mini:
+        case Model::GPT_4_5:
+            return true;
+        case Model::GPT_3_5_Turbo:
+        case Model::Custom:
+            return false;
+    }
+    return false;
+}
+
+/**
+ * Get recommended model for specific use cases
+ */
+inline Model getRecommendedModel(const std::string& useCase) {
+    if (useCase == "coding" || useCase == "structured_output") {
+        return Model::GPT_4_1;
+    } else if (useCase == "cost_effective") {
+        return Model::GPT_4_1_Mini;
+    } else if (useCase == "fastest" || useCase == "classification") {
+        return Model::GPT_4_1_Nano;
+    } else if (useCase == "general") {
+        return Model::GPT_4o;
+    }
+    return Model::GPT_4_1_Mini;  // Default balanced choice
+}
+
+// OpenAI-specific simple message structure for convenience
+struct Message {
+    std::string role;  // "user", "assistant", "system"
+    std::string content;
+
+    json toJson() const { return json{{"role", role}, {"content", content}}; }
+
+    static Message fromJson(const json& j) {
+        Message msg;
+        msg.role = j.at("role").get<std::string>();
+        msg.content = j.at("content").get<std::string>();
+        return msg;
+    }
+};
+
+/**
  * Utility function for safely extracting JSON values with default fallbacks
  * Similar to Python's dict.get() method
  */
@@ -837,18 +951,87 @@ const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo",
 inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& request) {
     ResponsesRequest responsesReq;
     responsesReq.model = request.config.model;
-    responsesReq.input = ResponsesInput::fromText(request.prompt);
+
+    // Map prompt to OpenAI instructions field
+    if (!request.prompt.empty()) {
+        responsesReq.instructions = request.prompt;
+    }
+
+    // Handle different contextData formats
+    if (!request.contextData.is_null()) {
+        if (request.contextData.is_string()) {
+            // Simple string context
+            InputMessage userMsg;
+            userMsg.role = InputMessage::Role::User;
+            userMsg.content = request.contextData.get<std::string>();
+
+            std::vector<InputMessage> messages = {userMsg};
+            responsesReq.input = ResponsesInput::fromContentList(messages);
+        } else if (request.contextData.is_array()) {
+            // Array of OpenAI Messages
+            std::vector<InputMessage> messages;
+            for (const auto& msgJson : request.contextData) {
+                InputMessage inputMsg;
+                inputMsg.role = InputMessage::stringToRole(msgJson.at("role").get<std::string>());
+                inputMsg.content = msgJson.at("content").get<std::string>();
+                messages.push_back(inputMsg);
+            }
+            responsesReq.input = ResponsesInput::fromContentList(messages);
+        } else {
+            // Fallback: use prompt as user message
+            InputMessage userMsg;
+            userMsg.role = InputMessage::Role::User;
+            userMsg.content = request.prompt;
+
+            std::vector<InputMessage> messages = {userMsg};
+            responsesReq.input = ResponsesInput::fromContentList(messages);
+        }
+    } else {
+        // No context data: use prompt as user message
+        InputMessage userMsg;
+        userMsg.role = InputMessage::Role::User;
+        userMsg.content = request.prompt;
+
+        std::vector<InputMessage> messages = {userMsg};
+        responsesReq.input = ResponsesInput::fromContentList(messages);
+    }
     responsesReq.toolChoice =
         ToolChoiceMode::Auto;  // Explicitly initialize to fix cppcheck warning
     if (request.config.maxTokens > 0) {
         responsesReq.maxOutputTokens = request.config.maxTokens;
     }
-    if (request.config.randomness >= 0.0f) {
-        responsesReq.temperature = static_cast<double>(request.config.randomness);
+    if (request.config.temperature >= 0.0f) {
+        responsesReq.temperature = static_cast<double>(request.config.temperature);
     }
     if (!request.previousResponseId.empty()) {
         responsesReq.previousResponseID = request.previousResponseId;
     }
+
+    // Handle JSON schema for structured outputs
+    if (request.config.schemaObject.has_value()) {
+        // Use the structured schema object directly
+        const json& schemaJson = request.config.schemaObject.value();
+        // Use the function name as schema name (like aideas-core does)
+        std::string schemaName = request.config.functionName;
+        if (schemaName.empty()) {
+            schemaName = "response_schema";
+        }
+        responsesReq.text = TextOutputConfig(schemaName, schemaJson, true);
+    } else if (!request.config.jsonSchema.empty()) {
+        // Fallback to string schema for backward compatibility
+        try {
+            json schemaJson = json::parse(request.config.jsonSchema);
+            // Use the function name as schema name (like aideas-core does)
+            std::string schemaName = request.config.functionName;
+            if (schemaName.empty()) {
+                schemaName = "response_schema";
+            }
+            responsesReq.text = TextOutputConfig(schemaName, schemaJson, true);
+        } catch (const std::exception& e) {
+            throw std::runtime_error("Invalid JSON schema: " + std::string(e.what()));
+        }
+    }
+
     return responsesReq;
 }
 
@@ -1061,8 +1244,8 @@ inline ChatCompletionRequest ChatCompletionRequest::fromLLMRequest(const LLMRequ
     if (request.config.maxTokens > 0) {
         chatReq.maxTokens = request.config.maxTokens;
     }
-    if (request.config.randomness >= 0.0f) {
-        chatReq.temperature = static_cast<double>(request.config.randomness);
+    if (request.config.temperature >= 0.0f) {
+        chatReq.temperature = static_cast<double>(request.config.temperature);
     }
 
     return chatReq;
@@ -1072,7 +1255,7 @@ inline LLMRequest ChatCompletionRequest::toLLMRequest() const {
     LLMRequestConfig config;
     config.client = "openai";
     config.model = model;
-    if (temperature) config.randomness = static_cast<float>(*temperature);
+    if (temperature) config.temperature = static_cast<float>(*temperature);
     if (maxTokens) config.maxTokens = *maxTokens;
 
     std::string prompt;

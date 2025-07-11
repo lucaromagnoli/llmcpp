@@ -56,11 +56,13 @@ FetchContent_MakeAvailable(httplib)
 set(LLMCPP_SOURCES
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
+    src/core/JsonSchemaBuilder.cpp
     src/providers/ClientManager.cpp
     src/providers/ClientFactory.cpp
     src/openai/OpenAIClient.cpp
     src/openai/OpenAIHttpClient.cpp
     src/openai/OpenAIResponsesApi.cpp
+    src/openai/OpenAISchemaBuilder.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAIUtils.cpp
 )

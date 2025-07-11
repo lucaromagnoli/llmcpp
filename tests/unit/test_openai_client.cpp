@@ -3,6 +3,7 @@
 
 #include "core/LLMTypes.h"
 #include "openai/OpenAIClient.h"
+#include "openai/OpenAISchemaBuilder.h"
 
 using namespace OpenAI;
 
@@ -61,30 +62,31 @@ TEST_CASE("OpenAIClient request validation", "[openai][client][validation]") {
     SECTION("Valid request parameters") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
-        config.randomness = 0.7f;
+        config.temperature = 0.7f;
         config.maxTokens = 150;
 
         LLMRequest request(config, "Valid prompt");
 
         // Test that request can be created with valid parameters
         REQUIRE(request.config.model == "gpt-4o");
-        REQUIRE(request.config.randomness == Catch::Approx(0.7f));
+        REQUIRE(request.config.temperature == Catch::Approx(0.7f));
         REQUIRE(request.config.maxTokens == 150);
         REQUIRE(request.prompt == "Valid prompt");
     }
 
-    SECTION("Invalid randomness values") {
+    SECTION("Invalid temperature values") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
 
-        // Test edge cases for randomness
-        config.randomness = -0.1f;  // Below minimum
+        // Test edge cases for temperature
+        config.temperature = -0.1f;  // Below minimum
         LLMRequest request1(config, "Test prompt");
-        REQUIRE(request1.config.randomness == -0.1f);  // Stored as-is, validation happens in client
+        REQUIRE(request1.config.temperature ==
+                -0.1f);  // Stored as-is, validation happens in client
 
-        config.randomness = 2.1f;  // Above maximum
+        config.temperature = 2.1f;  // Above maximum
         LLMRequest request2(config, "Test prompt");
-        REQUIRE(request2.config.randomness == 2.1f);  // Stored as-is, validation happens in client
+        REQUIRE(request2.config.temperature == 2.1f);  // Stored as-is, validation happens in client
     }
 
     SECTION("Invalid token limits") {
@@ -109,31 +111,34 @@ TEST_CASE("OpenAIClient request building", "[openai][client][request-building]")
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "analyze_sentiment";
-        config.jsonSchema =
-            "{"
-            "\"type\": \"object\","
-            "\"properties\": {"
-            "\"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"negative\", "
-            "\"neutral\"]},"
-            "\"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}"
-            "},"
-            "\"required\": [\"sentiment\", \"confidence\"]"
-            "}";
-        config.randomness = 0.3f;
+
+        // Use OpenAI schema builder instead of manual JSON string
+        auto schema =
+            OpenAIResponsesSchemaBuilder("analyze_sentiment")
+                .property("sentiment", JsonSchemaBuilder::string().enumValues(
+                                           {"positive", "negative", "neutral"}))
+                .property("confidence", JsonSchemaBuilder::number().minimum(0.0).maximum(1.0))
+                .required({"sentiment", "confidence"})
+                .buildSchema();
+
+        config.schemaObject = schema;
+        config.temperature = 0.3f;
         config.maxTokens = 100;
 
         LLMRequest request(config, "Analyze the sentiment of this text: I love this product!");
 
         REQUIRE(request.config.functionName == "analyze_sentiment");
-        REQUIRE(request.config.jsonSchema.find("sentiment") != std::string::npos);
-        REQUIRE(request.config.jsonSchema.find("confidence") != std::string::npos);
+        REQUIRE(request.config.schemaObject.has_value());
+        REQUIRE(request.config.schemaObject->contains("properties"));
+        REQUIRE(request.config.schemaObject->at("properties").contains("sentiment"));
+        REQUIRE(request.config.schemaObject->at("properties").contains("confidence"));
         REQUIRE(request.prompt.find("I love this product") != std::string::npos);
     }
 
     SECTION("Build Chat Completions request with system message") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
-        config.randomness = 0.8f;
+        config.temperature = 0.8f;
         config.maxTokens = 300;
 
         std::string systemPrompt =
@@ -237,26 +242,29 @@ TEST_CASE("OpenAIClient tool usage", "[openai][client][tools]") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "calculate_tip";
-        config.jsonSchema =
-            "{"
-            "\"type\": \"object\","
-            "\"properties\": {"
-            "\"bill_amount\": {\"type\": \"number\", \"description\": \"The total bill amount\"},"
-            "\"tip_percentage\": {\"type\": \"number\", \"description\": \"The tip percentage "
-            "(0-100)\"},"
-            "\"tip_amount\": {\"type\": \"number\", \"description\": \"The calculated tip "
-            "amount\"},"
-            "\"total_amount\": {\"type\": \"number\", \"description\": \"The total amount "
-            "including tip\"}"
-            "},"
-            "\"required\": [\"bill_amount\", \"tip_percentage\", \"tip_amount\", \"total_amount\"]"
-            "}";
+
+        // Use OpenAI schema builder for tip calculation
+        auto schema =
+            OpenAIResponsesSchemaBuilder("calculate_tip")
+                .property("bill_amount",
+                          JsonSchemaBuilder::number().description("The total bill amount"))
+                .property("tip_percentage",
+                          JsonSchemaBuilder::number().description("The tip percentage (0-100)"))
+                .property("tip_amount",
+                          JsonSchemaBuilder::number().description("The calculated tip amount"))
+                .property("total_amount",
+                          JsonSchemaBuilder::number().description("The total amount including tip"))
+                .required({"bill_amount", "tip_percentage", "tip_amount", "total_amount"})
+                .buildSchema();
+
+        config.schemaObject = schema;
 
         LLMRequest request(config, "Calculate a 20% tip on a $50 bill");
 
         REQUIRE(request.config.functionName == "calculate_tip");
-        REQUIRE(request.config.jsonSchema.find("bill_amount") != std::string::npos);
-        REQUIRE(request.config.jsonSchema.find("tip_percentage") != std::string::npos);
+        REQUIRE(request.config.schemaObject.has_value());
+        REQUIRE(request.config.schemaObject->at("properties").contains("bill_amount"));
+        REQUIRE(request.config.schemaObject->at("properties").contains("tip_percentage"));
         REQUIRE(request.prompt.find("20%") != std::string::npos);
         REQUIRE(request.prompt.find("$50") != std::string::npos);
     }
@@ -265,35 +273,36 @@ TEST_CASE("OpenAIClient tool usage", "[openai][client][tools]") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "analyze_document";
-        config.jsonSchema =
-            "{"
-            "\"type\": \"object\","
-            "\"properties\": {"
-            "\"summary\": {\"type\": \"string\", \"description\": \"Brief summary of the "
-            "document\"},"
-            "\"key_points\": {"
-            "\"type\": \"array\","
-            "\"items\": {\"type\": \"string\"},"
-            "\"description\": \"List of key points\""
-            "},"
-            "\"metadata\": {"
-            "\"type\": \"object\","
-            "\"properties\": {"
-            "\"document_type\": {\"type\": \"string\"},"
-            "\"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1},"
-            "\"language\": {\"type\": \"string\"}"
-            "}"
-            "}"
-            "},"
-            "\"required\": [\"summary\", \"key_points\", \"metadata\"]"
-            "}";
+
+        // Use OpenAI schema builder for complex nested document analysis
+        auto schema =
+            OpenAIResponsesSchemaBuilder("analyze_document")
+                .property("summary",
+                          JsonSchemaBuilder::string().description("Brief summary of the document"))
+                .property("key_points", JsonSchemaBuilder::array()
+                                            .items(JsonSchemaBuilder::string())
+                                            .description("List of key points"))
+                .property("metadata",
+                          JsonSchemaBuilder::object()
+                              .property("document_type", JsonSchemaBuilder::string())
+                              .property("confidence",
+                                        JsonSchemaBuilder::number().minimum(0.0).maximum(1.0))
+                              .property("language", JsonSchemaBuilder::string()))
+                .required({"summary", "key_points", "metadata"})
+                .buildSchema();
+
+        config.schemaObject = schema;
 
         LLMRequest request(config, "Analyze this research paper about climate change impacts");
 
         REQUIRE(request.config.functionName == "analyze_document");
-        REQUIRE(request.config.jsonSchema.find("key_points") != std::string::npos);
-        REQUIRE(request.config.jsonSchema.find("metadata") != std::string::npos);
-        REQUIRE(request.config.jsonSchema.find("document_type") != std::string::npos);
+        REQUIRE(request.config.schemaObject.has_value());
+        REQUIRE(request.config.schemaObject->at("properties").contains("key_points"));
+        REQUIRE(request.config.schemaObject->at("properties").contains("metadata"));
+        REQUIRE(request.config.schemaObject->at("properties")
+                    .at("metadata")
+                    .at("properties")
+                    .contains("document_type"));
     }
 }
 
