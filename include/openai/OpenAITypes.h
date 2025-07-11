@@ -13,6 +13,45 @@ using json = nlohmann::json;
 namespace OpenAI {
 
 /**
+ * Utility function for safely extracting JSON values with default fallbacks
+ * Similar to Python's dict.get() method
+ */
+template <typename T>
+T safeGetJson(const json& j, const std::string& key, const T& defaultValue = T{}) {
+    if (j.contains(key) && !j[key].is_null()) {
+        return j[key].get<T>();
+    }
+    return defaultValue;
+}
+
+/**
+ * Utility function for safely extracting optional JSON values
+ * Returns std::nullopt if key doesn't exist or is null
+ */
+template <typename T>
+std::optional<T> safeGetOptionalJson(const json& j, const std::string& key) {
+    if (j.contains(key) && !j[key].is_null()) {
+        return j[key].get<T>();
+    }
+    return std::nullopt;
+}
+
+/**
+ * Utility function for safely extracting required JSON values
+ * Throws std::runtime_error with helpful message if key is missing or null
+ */
+template <typename T>
+T safeGetRequiredJson(const json& j, const std::string& key) {
+    if (!j.contains(key)) {
+        throw std::runtime_error("Required JSON key '" + key + "' is missing");
+    }
+    if (j[key].is_null()) {
+        throw std::runtime_error("Required JSON key '" + key + "' is null");
+    }
+    return j[key].get<T>();
+}
+
+/**
  * OpenAI Responses API Types (Modern Structured Output API)
  * Based on official OpenAI documentation: https://platform.openai.com/docs/api-reference/responses
  */
@@ -615,7 +654,7 @@ struct ResponsesResponse {
     std::vector<FunctionCall> getFunctionCalls() const;
     std::vector<ImageGenerationCall> getImageGenerations() const;
     bool isCompleted() const { return status == ResponseStatus::Completed; }
-    bool hasError() const { return error.has_value(); }
+    bool hasError() const { return error.has_value() && !error->is_null(); }
 };
 
 /**
@@ -868,40 +907,37 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
 // ResponsesResponse conversion methods
 inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
     ResponsesResponse resp;
-    resp.id = j.at("id").get<std::string>();
-    resp.object = j.value("object", "response");
-    resp.createdAt = j.value("created_at", 0.0);
-    resp.status = responseStatusFromString(j.value("status", "completed"));
-    resp.model = j.at("model").get<std::string>();
+    resp.id = safeGetRequiredJson<std::string>(j, "id");
+    resp.object = safeGetJson(j, "object", std::string("response"));
+    resp.createdAt = safeGetJson(j, "created_at", 0.0);
+    resp.status = responseStatusFromString(safeGetJson(j, "status", std::string("completed")));
+    resp.model = safeGetRequiredJson<std::string>(j, "model");
 
-    if (j.contains("error")) resp.error = j["error"];
-    if (j.contains("incomplete_details")) resp.incompleteDetails = j["incomplete_details"];
-    if (j.contains("instructions")) resp.instructions = j["instructions"].get<std::string>();
-    if (j.contains("max_output_tokens")) resp.maxOutputTokens = j["max_output_tokens"].get<int>();
-    if (j.contains("output_text")) resp.outputText = j["output_text"].get<std::string>();
-    if (j.contains("parallel_tool_calls"))
-        resp.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
-    if (j.contains("previous_response_id"))
-        resp.previousResponseId = j["previous_response_id"].get<std::string>();
-    if (j.contains("reasoning")) resp.reasoning = j["reasoning"];
-    if (j.contains("store")) resp.store = j["store"].get<bool>();
-    if (j.contains("text")) resp.text = j["text"];
-    if (j.contains("tool_choice")) resp.toolChoice = j["tool_choice"];
-    if (j.contains("tools")) resp.tools = j["tools"].get<std::vector<json>>();
-    if (j.contains("top_p")) resp.topP = j["top_p"].get<double>();
-    if (j.contains("truncation")) resp.truncation = j["truncation"].get<std::string>();
-    if (j.contains("user")) resp.user = j["user"].get<std::string>();
-    if (j.contains("metadata")) resp.metadata = j["metadata"];
-    if (j.contains("reasoning_effort"))
-        resp.reasoningEffort = j["reasoning_effort"].get<std::string>();
+    // Use utility functions for optional fields
+    resp.error = safeGetOptionalJson<json>(j, "error");
+    resp.incompleteDetails = safeGetOptionalJson<json>(j, "incomplete_details");
+    resp.instructions = safeGetOptionalJson<std::string>(j, "instructions");
+    if (j.contains("max_output_tokens"))
+        resp.maxOutputTokens = safeGetJson(j, "max_output_tokens", 0);
+    resp.outputText = safeGetOptionalJson<std::string>(j, "output_text");
+    resp.parallelToolCalls = safeGetJson(j, "parallel_tool_calls", false);
+    resp.previousResponseId = safeGetOptionalJson<std::string>(j, "previous_response_id");
+    resp.reasoning = safeGetOptionalJson<json>(j, "reasoning");
+    resp.store = safeGetJson(j, "store", true);
+    resp.text = safeGetOptionalJson<json>(j, "text");
+    resp.toolChoice = safeGetOptionalJson<json>(j, "tool_choice");
+    resp.tools = safeGetJson(j, "tools", std::vector<json>());
+    if (j.contains("top_p")) resp.topP = safeGetJson(j, "top_p", 0.0);
+    resp.truncation = safeGetOptionalJson<std::string>(j, "truncation");
+    resp.user = safeGetOptionalJson<std::string>(j, "user");
+    resp.metadata = safeGetOptionalJson<json>(j, "metadata");
+    resp.reasoningEffort = safeGetOptionalJson<std::string>(j, "reasoning_effort");
 
     // Parse usage
     if (j.contains("usage")) {
         const auto& usage = j["usage"];
-        if (usage.contains("input_tokens"))
-            resp.usage.inputTokens = usage["input_tokens"].get<int>();
-        if (usage.contains("output_tokens"))
-            resp.usage.outputTokens = usage["output_tokens"].get<int>();
+        resp.usage.inputTokens = safeGetJson(usage, "input_tokens", 0);
+        resp.usage.outputTokens = safeGetJson(usage, "output_tokens", 0);
     }
 
     // Parse output array

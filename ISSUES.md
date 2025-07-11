@@ -7,7 +7,7 @@ This document contains issue templates for the llmcpp development roadmap. You c
 ## Core Implementation Issues (v1.0.0)
 
 ### 🚀 Implement OpenAI HTTP Client
-**Labels:** `enhancement`, `core`, `high-priority`  
+**Labels:** `enhancement`, `core`, `high-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -28,13 +28,13 @@ Implement the core HTTP client for OpenAI API using cpp-httplib.
 - [ ] Tests cover success and error scenarios
 - [ ] Documentation includes usage examples
 
-**Dependencies:** None (foundational feature)  
+**Dependencies:** None (foundational feature)
 **Priority:** High | **Effort:** 2-3 days
 
 ---
 
 ### 🔧 Implement OpenAI Chat Completions API
-**Labels:** `enhancement`, `core`, `high-priority`  
+**Labels:** `enhancement`, `core`, `high-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -57,13 +57,13 @@ Implement the OpenAI Chat Completions API endpoint with full parameter support.
 - [ ] Error handling for model not found, invalid parameters
 - [ ] Tests cover various parameter combinations
 
-**Dependencies:** Requires OpenAI HTTP Client implementation  
+**Dependencies:** Requires OpenAI HTTP Client implementation
 **Priority:** High | **Effort:** 3-4 days
 
 ---
 
 ### 📡 Implement Streaming Support
-**Labels:** `enhancement`, `streaming`, `high-priority`  
+**Labels:** `enhancement`, `streaming`, `high-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -86,7 +86,7 @@ Add streaming support for real-time responses from OpenAI API.
 - [ ] Stream cancellation works correctly
 - [ ] Tests cover streaming scenarios
 
-**Dependencies:** 
+**Dependencies:**
 - Requires OpenAI HTTP Client implementation
 - Requires Chat Completions API
 
@@ -95,7 +95,7 @@ Add streaming support for real-time responses from OpenAI API.
 ---
 
 ### 🔒 Implement Authentication and API Key Management
-**Labels:** `enhancement`, `security`, `medium-priority`  
+**Labels:** `enhancement`, `security`, `medium-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -118,13 +118,13 @@ Add robust authentication and API key management with security best practices.
 - [ ] Support for multiple provider keys
 - [ ] Tests cover various auth scenarios
 
-**Dependencies:** Related to OpenAI HTTP Client implementation  
+**Dependencies:** Related to OpenAI HTTP Client implementation
 **Priority:** Medium | **Effort:** 1-2 days
 
 ## Documentation and Examples (v1.0.0)
 
 ### 📚 Create Comprehensive Examples
-**Labels:** `documentation`, `examples`, `medium-priority`  
+**Labels:** `documentation`, `examples`, `medium-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -155,7 +155,7 @@ Create real-world examples showcasing library capabilities.
 ---
 
 ### 📖 Add API Documentation with Doxygen
-**Labels:** `documentation`, `medium-priority`  
+**Labels:** `documentation`, `medium-priority`
 **Milestone:** v1.0.0
 
 **Description:**
@@ -176,13 +176,13 @@ Generate comprehensive API documentation using Doxygen.
 - [ ] Documentation is automatically deployed
 - [ ] Documentation links work correctly
 
-**Dependencies:** Requires core implementation complete  
+**Dependencies:** Requires core implementation complete
 **Priority:** Medium | **Effort:** 2-3 days
 
 ## Testing and Quality (v1.1.0)
 
 ### 🧪 Add Integration Tests
-**Labels:** `testing`, `integration`, `medium-priority`  
+**Labels:** `testing`, `integration`, `medium-priority`
 **Milestone:** v1.1.0
 
 **Description:**
@@ -212,7 +212,7 @@ Create integration tests that verify end-to-end functionality with real APIs.
 ## Future Enhancements
 
 ### 🤖 Add Anthropic Claude Support
-**Labels:** `enhancement`, `provider`, `low-priority`  
+**Labels:** `enhancement`, `provider`, `low-priority`
 **Milestone:** v2.0.0
 
 **Description:**
@@ -242,7 +242,7 @@ Extend the library to support Anthropic's Claude API as a second provider.
 ---
 
 ### 📦 Package Manager Integration
-**Labels:** `packaging`, `distribution`, `low-priority`  
+**Labels:** `packaging`, `distribution`, `low-priority`
 **Milestone:** v1.2.0
 
 **Description:**
@@ -263,13 +263,13 @@ Add support for popular C++ package managers.
 - [ ] Documentation covers all installation methods
 - [ ] CI verifies package installations
 
-**Dependencies:** Requires stable v1.0.0 release  
+**Dependencies:** Requires stable v1.0.0 release
 **Priority:** Low | **Effort:** 3-4 days
 
 ---
 
 ### ⚡ Performance Optimization and Benchmarks
-**Labels:** `performance`, `optimization`, `low-priority`  
+**Labels:** `performance`, `optimization`, `low-priority`
 **Milestone:** v1.3.0
 
 **Description:**
@@ -291,13 +291,13 @@ Optimize performance and establish benchmarks for the library.
 - [ ] Connection pooling improves throughput
 - [ ] Benchmarks run in CI for regression detection
 
-**Dependencies:** Requires core implementation complete  
+**Dependencies:** Requires core implementation complete
 **Priority:** Low | **Effort:** 4-5 days
 
 ## Summary
 
-**Total Issues:** 10  
-**v1.0.0 Issues:** 6 (Core implementation + examples/docs)  
+**Total Issues:** 10
+**v1.0.0 Issues:** 6 (Core implementation + examples/docs)
 **Future Releases:** 4 (Testing, providers, packaging, performance)
 
 **Estimated Total Effort:** 25-35 development days
@@ -307,4 +307,4 @@ Optimize performance and establish benchmarks for the library.
 2. Chat Completions API
 3. Streaming Support
 4. Authentication
-5. Examples and Documentation 
+5. Examples and Documentation

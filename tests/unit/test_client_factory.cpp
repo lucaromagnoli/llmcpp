@@ -63,10 +63,8 @@ TEST_CASE("ClientFactory unsupported providers", "[client][factory][errors]") {
     }
 
     SECTION("Empty API key") {
-        auto client = factory.createClient("openai", "");
-
-        // Should handle empty API key gracefully
-        REQUIRE(true);
+        // Should throw an exception for empty API key (proper validation)
+        REQUIRE_THROWS_AS(factory.createClient("openai", ""), std::invalid_argument);
     }
 }
 

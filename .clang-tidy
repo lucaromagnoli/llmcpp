@@ -125,4 +125,4 @@ CheckOptions:
   - key: google-readability-namespace-comments.ShortNamespaceLines
     value: 1
   - key: google-readability-namespace-comments.SpacesBeforeComments
-    value: 2 
+    value: 2

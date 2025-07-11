@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+# Find required dependencies
+find_dependency(OpenSSL REQUIRED)
+
+# Find nlohmann_json
+find_dependency(nlohmann_json 3.11.0)
+
+include("${CMAKE_CURRENT_LIST_DIR}/llmcppTargets.cmake")
+
+check_required_components(llmcpp) 
