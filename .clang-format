@@ -1,7 +1,6 @@
 ---
-BasedOnStyle: Google
 Language: Cpp
-Standard: c++20
+BasedOnStyle: Google
 
 # Indentation
 IndentWidth: 4
@@ -9,106 +8,90 @@ TabWidth: 4
 UseTab: Never
 ContinuationIndentWidth: 4
 IndentCaseLabels: true
-IndentPPDirectives: BeforeHash
+IndentPPDirectives: None
 
 # Line length
 ColumnLimit: 100
-ReflowComments: true
 
 # Braces
 BreakBeforeBraces: Attach
-BraceWrapping:
-  AfterClass: false
-  AfterControlStatement: false
-  AfterEnum: false
-  AfterFunction: false
-  AfterNamespace: false
-  AfterStruct: false
-  AfterUnion: false
-  BeforeCatch: false
-  BeforeElse: false
+Cpp11BracedListStyle: true
 
 # Spacing
-SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
 SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: false
 SpaceBeforeCtorInitializerColon: true
 SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: ControlStatements
 SpaceBeforeRangeBasedForLoopColon: true
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 2
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: true
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
 
-# Alignment
-AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignEscapedNewlines: Left
-AlignOperands: true
-AlignTrailingComments: true
-
-# Breaking
-AllowAllArgumentsOnNextLine: true
-AllowAllConstructorInitializersOnNextLine: true
-AllowAllParametersOfDeclarationOnNextLine: true
-AllowShortBlocksOnASingleLine: Never
+# Line breaks
+AllowShortBlocksOnASingleLine: Empty
 AllowShortCaseLabelsOnASingleLine: false
-AllowShortFunctionsOnASingleLine: Empty
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLambdasOnASingleLine: All
-
-# Breaking before binary operators
+AllowShortLoopsOnASingleLine: true
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+AlwaysBreakBeforeMultilineStrings: true
+AlwaysBreakTemplateDeclarations: Yes
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: BeforeColon
 BreakInheritanceList: BeforeColon
 BreakStringLiterals: true
 
-# Constructor initializers
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-ConstructorInitializerIndentWidth: 4
+# Alignment
+AlignAfterOpenBracket: Align
+AlignConsecutiveAssignments: false
+AlignConsecutiveDeclarations: false
+AlignConsecutiveMacros: false
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
 
 # Includes
-IncludeBlocks: Preserve
+IncludeBlocks: Regroup
 SortIncludes: true
 SortUsingDeclarations: true
 
-# Penalties (for line breaking decisions)
+# Other
+BinPackArguments: true
+BinPackParameters: true
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+ConstructorInitializerIndentWidth: 4
+DerivePointerAlignment: false
+ExperimentalAutoDetectBinPacking: false
+FixNamespaceComments: true
+ForEachMacros:
+  - foreach
+  - Q_FOREACH
+  - BOOST_FOREACH
+KeepEmptyLinesAtTheStartOfBlocks: false
+MacroBlockBegin: ''
+MacroBlockEnd: ''
+MaxEmptyLinesToKeep: 1
+NamespaceIndentation: None
 PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakBeforeFirstCallParameter: 1
 PenaltyBreakComment: 300
 PenaltyBreakFirstLessLess: 120
 PenaltyBreakString: 1000
 PenaltyBreakTemplateDeclaration: 10
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 200
-
-# Pointer and reference alignment
-DerivePointerAlignment: false
 PointerAlignment: Left
-
-# Namespaces
-NamespaceIndentation: None
-CompactNamespaces: false
-
-# Access modifiers
-AccessModifierOffset: -4
-
-# Comments
 ReflowComments: true
-CommentPragmas: '^ IWYU pragma:'
-
-# Macros
-MacroBlockBegin: ''
-MacroBlockEnd: ''
-
-# Experimental
-ExperimentalAutoDetectBinPacking: false
-BinPackArguments: false
-BinPackParameters: false
-
-# C++11/14/17/20 specific
-Cpp11BracedListStyle: true
-FixNamespaceComments: true 
+Standard: Latest 

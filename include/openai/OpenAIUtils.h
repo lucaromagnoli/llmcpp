@@ -1,23 +1,15 @@
 #pragma once
-#include <string>
 #include <nlohmann/json.hpp>
+#include <string>
 
 using json = nlohmann::json;
 
+namespace OpenAI {
+
 /**
- * OpenAI utility functions
- * TODO: Implement actual utilities
+ * Utility functions for OpenAI API
  */
-namespace OpenAIUtils {
-    // URL building
-    std::string buildApiUrl(const std::string& endpoint);
-    
-    // Request formatting
-    json formatChatRequest(const std::string& prompt, const std::string& model);
-    
-    // Response parsing
-    std::string extractResponseText(const json& response);
-    
-    // Error handling
-    std::string parseErrorMessage(const json& errorResponse);
-} 
+std::string buildUrl(const std::string& endpoint);
+json createHeaders(const std::string& apiKey);
+
+}  // namespace OpenAI
