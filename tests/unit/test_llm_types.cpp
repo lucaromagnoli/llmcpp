@@ -27,16 +27,15 @@ TEST_CASE("LLMRequest construction and validation", "[llm][types]") {
     config.model = "gpt-4o";
 
     std::string prompt = "What is the capital of France?";
-    LLMInput inputValues = {"location", "France"};
+    LLMContext context = {json{{"role", "user"}, {"content", "location: France"}}};
 
-    LLMRequest request(config, prompt, inputValues, "prev-response-123");
+    LLMRequest request(config, prompt, context, "prev-response-123");
 
     REQUIRE(request.config.client == "openai");
     REQUIRE(request.config.model == "gpt-4o");
     REQUIRE(request.prompt == prompt);
-    REQUIRE(request.inputValues.size() == 2);
-    REQUIRE(request.inputValues[0] == "location");
-    REQUIRE(request.inputValues[1] == "France");
+    REQUIRE(request.context.size() == 1);
+    REQUIRE(request.context[0]["content"] == "location: France");
     REQUIRE(request.previousResponseId == "prev-response-123");
 
     // Test toString method
@@ -109,29 +108,31 @@ TEST_CASE("LLMErrorCode string conversion", "[llm][types]") {
     REQUIRE(toString(LLMErrorCode::Unknown) == "Unknown");
 }
 
-TEST_CASE("LLMInput vector functionality", "[llm][types]") {
-    LLMInput input;
+TEST_CASE("LLMContext vector functionality", "[llm][types]") {
+    LLMContext context;
 
-    REQUIRE(input.empty());
-    REQUIRE(input.size() == 0);
+    REQUIRE(context.empty());
+    REQUIRE(context.size() == 0);
 
-    input.push_back("first");
-    input.push_back("second");
-    input.push_back("third");
+    context.push_back(json{{"role", "user"}, {"content", "first"}});
+    context.push_back(json{{"role", "user"}, {"content", "second"}});
+    context.push_back(json{{"role", "user"}, {"content", "third"}});
 
-    REQUIRE(input.size() == 3);
-    REQUIRE(input[0] == "first");
-    REQUIRE(input[1] == "second");
-    REQUIRE(input[2] == "third");
+    REQUIRE(context.size() == 3);
+    REQUIRE(context[0]["content"] == "first");
+    REQUIRE(context[1]["content"] == "second");
+    REQUIRE(context[2]["content"] == "third");
 
     // Test range-based for loop
     std::vector<std::string> collected;
-    for (const auto& item : input) {
-        collected.push_back(item);
+    for (const auto& item : context) {
+        collected.push_back(item["content"].get<std::string>());
     }
 
     REQUIRE(collected.size() == 3);
-    REQUIRE(collected == input);
+    REQUIRE(collected[0] == "first");
+    REQUIRE(collected[1] == "second");
+    REQUIRE(collected[2] == "third");
 }
 
 TEST_CASE("LLMRequest deleted default constructor", "[llm][types]") {
@@ -160,15 +161,17 @@ TEST_CASE("Complex LLMRequest with all fields", "[llm][types]") {
     config.temperature = 0.8f;
     config.maxTokens = 500;
 
-    LLMInput inputValues = {"data1", "data2", "data3"};
+    LLMContext context = {json{{"role", "user"}, {"content", "data1"}},
+                          json{{"role", "user"}, {"content", "data2"}},
+                          json{{"role", "user"}, {"content", "data3"}}};
     std::string prompt = "Analyze the following data and provide insights";
     std::string previousResponseId = "response-456";
 
-    LLMRequest request(config, prompt, inputValues, previousResponseId);
+    LLMRequest request(config, prompt, context, previousResponseId);
 
     REQUIRE(request.config.functionName == "analyze_data");
     REQUIRE(request.config.jsonSchema.find("object") != std::string::npos);
-    REQUIRE(request.inputValues.size() == 3);
+    REQUIRE(request.context.size() == 3);
     REQUIRE(request.previousResponseId == "response-456");
 
     // Verify all data is preserved in toString

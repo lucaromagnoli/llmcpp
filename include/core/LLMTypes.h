@@ -7,8 +7,8 @@
 
 using json = nlohmann::json;
 
-// Input type using standard C++ vectors instead of JUCE StringArray
-using LLMInput = std::vector<std::string>;
+// Context type using standard C++ vectors of generic objects
+using LLMContext = std::vector<json>;
 
 /// Represents the configuration for the LLM
 struct LLMRequestConfig {
@@ -41,59 +41,40 @@ struct LLMRequest {
     LLMRequest() = delete;
 
     // Constructor with prompt only
-    LLMRequest(LLMRequestConfig config, std::string prompt, LLMInput inputValues = {},
+    LLMRequest(LLMRequestConfig config, std::string prompt, LLMContext context = {},
                std::string previousResponseId = "")
         : config(std::move(config)),
           prompt(std::move(prompt)),
-          inputValues(std::move(inputValues)),
+          context(std::move(context)),
           previousResponseId(std::move(previousResponseId)) {}
 
-    // Constructor with single context message (convenience)
-    LLMRequest(LLMRequestConfig config, std::string prompt, std::string contextMessage,
-               LLMInput inputValues = {}, std::string previousResponseId = "")
+    // Constructor with single context object (convenience)
+    LLMRequest(LLMRequestConfig config, std::string prompt, json contextObject,
+               std::string previousResponseId = "")
         : config(std::move(config)),
           prompt(std::move(prompt)),
-          contextData(std::move(contextMessage)),
-          inputValues(std::move(inputValues)),
-          previousResponseId(std::move(previousResponseId)) {}
-
-    // Constructor with structured context (provider-specific)
-    LLMRequest(LLMRequestConfig config, std::string prompt, json contextData,
-               LLMInput inputValues = {}, std::string previousResponseId = "")
-        : config(std::move(config)),
-          prompt(std::move(prompt)),
-          contextData(std::move(contextData)),
-          inputValues(std::move(inputValues)),
+          context({std::move(contextObject)}),
           previousResponseId(std::move(previousResponseId)) {}
 
     LLMRequestConfig config;
-    std::string prompt;              // The main task/prompt (what to do)
-    json contextData;                // Context data (provider-specific format)
-    LLMInput inputValues;            // Template variables for substitution
+    std::string prompt;  // The main task/prompt (what to do) - maps to instructions
+    LLMContext context;  // Context data (vector of generic objects) - maps to inputValues
     std::string previousResponseId;  // For conversation continuity
 
     // Utility methods
     std::string instructions() const { return prompt; }  // For OpenAI mapping
-    std::string context() const {
-        // Return context as string if it's a string, empty otherwise
-        if (contextData.is_string()) {
-            return contextData.get<std::string>();
-        }
-        return "";
-    }
 
     std::string toString() const {
-        std::string inputValuesString;
-        for (size_t i = 0; i < inputValues.size(); ++i) {
-            if (i > 0) inputValuesString += ", ";
-            inputValuesString += inputValues[i];
+        std::string contextString = "[";
+        for (size_t i = 0; i < context.size(); ++i) {
+            if (i > 0) contextString += ", ";
+            contextString += context[i].dump();
         }
-
-        std::string contextString = contextData.dump();
+        contextString += "]";
 
         return "LLMRequest {\n config: " + config.toString() + ",\n prompt: " + prompt +
-               ",\n contextData: " + contextString + ",\n inputValues: [" + inputValuesString +
-               "]" + ",\n previousResponseId: " + previousResponseId + "\n}";
+               ",\n context: " + contextString + ",\n previousResponseId: " + previousResponseId +
+               "\n}";
     }
 };
 

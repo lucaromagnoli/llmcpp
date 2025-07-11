@@ -11,6 +11,7 @@ A modern C++20 library providing a unified interface for Large Language Model AP
 - **🎯 Header-only friendly**: Easy integration into any C++ project
 - **🌐 Cross-platform**: Works on Linux, macOS, and Windows
 - **✅ Production ready**: Full OpenAI Responses API implementation
+- **📝 Flexible input**: Support for both simple prompts and structured context
 
 ## Quick Start
 
@@ -30,7 +31,7 @@ int main() {
     config.maxTokens = 100;
     config.temperature = 0.7f;
 
-    // Create and send request
+    // Create and send request with prompt
     LLMRequest request(config, "Hello! How are you?");
     auto response = client.sendRequest(request);
 
@@ -44,6 +45,27 @@ int main() {
 
     return 0;
 }
+```
+
+### Using Context and Instructions
+
+```cpp
+// Create request with separate prompt (instructions) and context
+LLMRequestConfig config;
+config.client = "openai";
+config.model = "gpt-4o-mini";
+config.maxTokens = 200;
+
+// Context data (will be mapped to OpenAI input)
+LLMContext context = {
+    {{"role", "user"}, {"content", "What is 2+2?"}}
+};
+
+// Prompt becomes instructions for the model
+std::string prompt = "You are a math assistant. Answer with just the number.";
+
+LLMRequest request(config, prompt, context);
+auto response = client.sendRequest(request);
 ```
 
 ### Async Usage
@@ -92,18 +114,31 @@ int main() {
 ### Core Components
 
 - **`OpenAIClient`**: Full OpenAI Responses API implementation
-- **`LLMRequest`/`LLMResponse`**: Unified request/response types
+- **`LLMRequest`/`LLMResponse`**: Unified request/response types with flexible input mapping
 - **`ClientManager`**: Smart pointer-based client management
 - **`LLMRequestConfig`**: Configuration for models and parameters
+
+### Request Structure
+
+The `LLMRequest` structure provides a unified interface that maps to provider-specific APIs:
+
+- **`prompt`**: Main instructions/task (maps to OpenAI `instructions`)
+- **`context`**: Vector of generic JSON objects (maps to OpenAI `input`)
+- **`config`**: Model and parameter configuration
+
+This design allows for:
+- Simple text completion with just a prompt
+- Structured conversations with context
+- Provider-specific optimizations while maintaining a unified interface
 
 ### Supported APIs
 
 - **OpenAI Responses API**: ✅ Complete implementation
   - Sync and async requests
-  - Structured outputs
-  - Function calling
-  - Error handling
-  - Usage tracking
+  - Structured outputs with JSON schema validation
+  - Function calling and tool usage
+  - Error handling and usage tracking
+  - Flexible input mapping (prompt → instructions, context → input)
 
 ## Building
 
@@ -112,6 +147,7 @@ int main() {
 - CMake 3.22+
 - C++20 compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - OpenSSL (for HTTPS support)
+- 🥷 Ninja build system (recommended, auto-installed via CMake)
 
 ### Build with Make
 
@@ -136,6 +172,18 @@ make help
 ```bash
 mkdir build && cd build
 cmake .. -DLLMCPP_BUILD_TESTS=ON
+cmake --build .
+```
+
+**Note**: The project uses Ninja as the default build system for faster builds. CMake will automatically download and use Ninja if available. To use a different generator, specify it explicitly:
+
+```bash
+# Use Makefiles instead
+cmake .. -G "Unix Makefiles" -DLLMCPP_BUILD_TESTS=ON
+cmake --build .
+
+# Use Visual Studio on Windows
+cmake .. -G "Visual Studio 17 2022" -DLLMCPP_BUILD_TESTS=ON
 cmake --build .
 ```
 
@@ -195,6 +243,34 @@ config.functionName = "my_func";  // Function name for structured outputs
 - **`gpt-4.1-nano`**: Fastest and cheapest option for simple tasks like classification
 - **`gpt-4o-mini`**: Cost-effective for basic text completion tasks
 - **`gpt-4o`**: Good balance of performance and cost for general use
+
+### Structured Outputs
+
+```cpp
+// Define JSON schema for structured output
+json schema = {
+    {"type", "object"},
+    {"properties", {
+        {"answer", {{"type", "string"}}},
+        {"confidence", {{"type", "number"}}}
+    }},
+    {"required", {"answer", "confidence"}}
+};
+
+LLMRequestConfig config;
+config.schemaObject = schema;
+config.functionName = "analyze_sentiment";
+
+LLMRequest request(config, "Analyze the sentiment of this text");
+auto response = client.sendRequest(request);
+
+// Access structured output
+if (response.success) {
+    auto result = response.result["text"];
+    std::cout << "Answer: " << result["answer"] << std::endl;
+    std::cout << "Confidence: " << result["confidence"] << std::endl;
+}
+```
 
 ## Testing
 

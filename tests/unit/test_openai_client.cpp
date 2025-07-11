@@ -152,18 +152,16 @@ TEST_CASE("OpenAIClient request building", "[openai][client][request-building]")
         REQUIRE(request.prompt.find("quantum computing") != std::string::npos);
     }
 
-    SECTION("Build request with input values") {
+    SECTION("Build request with context") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
 
-        LLMInput inputValues = {"name", "Alice", "age", "30", "city", "Paris"};
-        LLMRequest request(config, "Generate a profile for: {name}, {age}, {city}", inputValues);
+        LLMContext context = {
+            json{{"role", "user"}, {"content", "name: Alice, age: 30, city: Paris"}}};
+        LLMRequest request(config, "Generate a profile for the given information", context);
 
-        REQUIRE(request.inputValues.size() == 6);
-        REQUIRE(request.inputValues[0] == "name");
-        REQUIRE(request.inputValues[1] == "Alice");
-        REQUIRE(request.inputValues[4] == "city");
-        REQUIRE(request.inputValues[5] == "Paris");
+        REQUIRE(request.context.size() == 1);
+        REQUIRE(request.context[0]["content"] == "name: Alice, age: 30, city: Paris");
     }
 }
 

@@ -61,15 +61,15 @@ jobs:
     needs: validate-version
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]  # Temporarily disabled windows-latest due to vcpkg issues
         build_type: [Release]
         include:
           - os: ubuntu-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
           - os: macos-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
-          - os: windows-latest
-            cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
+          # - os: windows-latest
+          #   cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
 
     runs-on: ${{ matrix.os }}
 
@@ -82,11 +82,11 @@ jobs:
         with:
           cmake-version: ${{ env.CMAKE_VERSION }}
 
-      - name: Setup vcpkg (Windows)
-        if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f0ff'
+      # - name: Setup vcpkg (Windows)
+      #   if: runner.os == 'Windows'
+      #   uses: lukka/run-vcpkg@v11
+      #   with:
+      #     vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f0ff'
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
@@ -99,10 +99,10 @@ jobs:
         run: |
           brew install openssl
 
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+      # - name: Configure CMake (Windows)
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 
       - name: Configure CMake (Non-Windows)
         if: runner.os != 'Windows'
@@ -125,12 +125,12 @@ jobs:
           cpack -G TGZ
           ls -la *.tar.gz
 
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd build
-          cpack -G ZIP
-          dir *.zip
+      # - name: Package (Windows)
+      #   if: runner.os == 'Windows'
+      #   run: |
+      #     cd build
+      #     cpack -G ZIP
+      #     dir *.zip
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -138,7 +138,7 @@ jobs:
           name: llmcpp-${{ needs.validate-version.outputs.version }}-${{ runner.os }}
           path: |
             build/*.tar.gz
-            build/*.zip
+            # build/*.zip  # Temporarily disabled Windows artifacts
           retention-days: 30
 
   create-release:
@@ -211,7 +211,7 @@ jobs:
           echo "### 📦 Assets:" >> $GITHUB_STEP_SUMMARY
           echo "- Linux (Ubuntu) build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- macOS build artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- Windows build artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚠️ Windows build artifacts (temporarily disabled due to vcpkg issues)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
