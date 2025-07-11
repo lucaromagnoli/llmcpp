@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(llmcpp VERSION 1.0.1 LANGUAGES CXX)
+project(llmcpp VERSION 1.0.2 LANGUAGES CXX)
 
 # Set version variables for easier access
 set(LLMCPP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -50,6 +50,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
     GIT_TAG v0.15.3
 )
+
+# Configure httplib to use OpenSSL
+set(HTTPLIB_USE_OPENSSL ON)
 FetchContent_MakeAvailable(httplib)
 
 # Source files
