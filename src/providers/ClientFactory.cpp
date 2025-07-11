@@ -1,24 +1,31 @@
-#include "providers/ClientFactory.h"
+#include "core/ClientFactory.h"
+
+#include <iostream>
+
 #include "openai/OpenAIClient.h"
 
-std::unique_ptr<LLMClient> ClientFactory::createOpenAIClient(const std::string& apiKey) {
-    return std::make_unique<OpenAIClient>(apiKey);
-}
-
-std::unique_ptr<LLMClient> ClientFactory::createClient(const std::string& providerName, 
-                                                      const std::string& apiKey) {
-    if (providerName == "openai") {
-        return createOpenAIClient(apiKey);
+std::unique_ptr<LLMClient> ClientFactory::createClient(const std::string& provider,
+                                                       const std::string& apiKey) {
+    if (provider == "openai") {
+        return std::make_unique<OpenAIClient>(apiKey);
     }
-    // TODO: Add other providers
+
+    // Add other providers here as they become available
+    // if (provider == "anthropic") {
+    //     return std::make_unique<Anthropic::AnthropicClient>(apiKey);
+    // }
+
     return nullptr;
 }
 
-std::vector<std::string> ClientFactory::getAvailableProviders() {
-    return {"openai"};
+bool ClientFactory::isProviderSupported(const std::string& provider) const {
+    return provider == "openai";
+    // Add other providers here
+    // return provider == "openai" || provider == "anthropic";
 }
 
-bool ClientFactory::isProviderSupported(const std::string& providerName) {
-    auto providers = getAvailableProviders();
-    return std::find(providers.begin(), providers.end(), providerName) != providers.end();
-} 
+std::vector<std::string> ClientFactory::getSupportedProviders() const {
+    return {"openai"};
+    // Add other providers here
+    // return {"openai", "anthropic"};
+}

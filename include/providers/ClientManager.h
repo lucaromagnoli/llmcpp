@@ -1,35 +1,29 @@
 #pragma once
-#include "core/LLMClient.h"
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
+#include <vector>
+
+#include "core/LLMClient.h"
+
+using json = nlohmann::json;
+
+namespace llmcpp {
 
 /**
  * Manager for multiple LLM clients
- * TODO: Implement full client management
  */
 class ClientManager {
-public:
-    ClientManager() = default;
-    
-    // Add a client
-    void addClient(const std::string& name, std::unique_ptr<LLMClient> client);
-    
-    // Get a client by name
-    LLMClient* getClient(const std::string& name);
-    
-    // Remove a client
-    void removeClient(const std::string& name);
-    
-    // Get all client names
-    std::vector<std::string> getClientNames() const;
-    
-    // Check if client exists
-    bool hasClient(const std::string& name) const;
-    
-    // Clear all clients
-    void clear();
+   public:
+    ClientManager();
 
-private:
+    void addClient(const std::string& name, const std::string& provider, const json& config);
+    LLMClient* getClient(const std::string& name);
+    std::vector<std::string> getClientNames() const;
+
+   private:
     std::unordered_map<std::string, std::unique_ptr<LLMClient>> clients_;
-}; 
+};
+
+}  // namespace llmcpp

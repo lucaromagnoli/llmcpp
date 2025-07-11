@@ -1,17 +1,47 @@
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <doctest/doctest.h>
+#include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "core/LLMTypes.h"
 
 TEST_CASE("LLMRequestConfig construction") {
     LLMRequestConfig config;
-    
-    CHECK(config.client.empty());
-    CHECK(config.model.empty());
-    CHECK(config.functionName == "llm_function");
-    CHECK(config.jsonSchema.is_object());
-    CHECK(config.randomness == 0.8f);
-    CHECK(config.maxTokens == 200);
+
+    REQUIRE(config.client.empty());
+    REQUIRE(config.model.empty());
+    REQUIRE(config.functionName == "llm_function");
+    REQUIRE(config.jsonSchema.empty());
+    REQUIRE(config.randomness == 0.8f);
+    REQUIRE(config.maxTokens == 200);
+}
+
+TEST_CASE("LLMRequest construction with required parameters") {
+    LLMRequestConfig config;
+    config.client = "test_client";
+    config.model = "test_model";
+    config.maxTokens = 100;
+
+    LLMRequest request(config, "Hello");
+
+    REQUIRE(request.config.client == "test_client");
+    REQUIRE(request.config.model == "test_model");
+    REQUIRE(request.config.maxTokens == 100);
+    REQUIRE(request.prompt == "Hello");
+    REQUIRE(request.inputValues.empty());
+}
+
+TEST_CASE("LLMRequest construction with input values") {
+    LLMRequestConfig config;
+    config.client = "test_client";
+    config.model = "test_model";
+
+    LLMInput inputValues = {"input1", "input2"};
+    LLMRequest request(config, "Hello", inputValues);
+
+    REQUIRE(request.config.client == "test_client");
+    REQUIRE(request.prompt == "Hello");
+    REQUIRE(request.inputValues.size() == 2);
+    REQUIRE(request.inputValues[0] == "input1");
+    REQUIRE(request.inputValues[1] == "input2");
 }
 
 TEST_CASE("LLMRequest toString") {
@@ -19,72 +49,103 @@ TEST_CASE("LLMRequest toString") {
     config.client = "test_client";
     config.model = "test_model";
     config.maxTokens = 100;
-    
-    LLMRequest request;
-    request.config = config;
-    request.prompt = "Hello";
-    request.inputValues = {"input1", "input2"};
-    
+
+    LLMInput inputValues = {"input1", "input2"};
+    LLMRequest request(config, "Hello", inputValues);
+
     std::string result = request.toString();
-    
-    CHECK(result.find("test_client") != std::string::npos);
-    CHECK(result.find("test_model") != std::string::npos);
-    CHECK(result.find("Hello") != std::string::npos);
-    CHECK(result.find("input1") != std::string::npos);
-    CHECK(result.find("input2") != std::string::npos);
+
+    REQUIRE(result.find("test_client") != std::string::npos);
+    REQUIRE(result.find("test_model") != std::string::npos);
+    REQUIRE(result.find("Hello") != std::string::npos);
+    REQUIRE(result.find("input1") != std::string::npos);
+    REQUIRE(result.find("input2") != std::string::npos);
 }
 
 TEST_CASE("LLMResponse construction") {
     LLMResponse response;
-    
-    CHECK(response.result.is_object());
-    CHECK(response.success == false);
-    CHECK(response.errorMessage.empty());
-    CHECK(response.responseId.empty());
+
+    REQUIRE(response.result.is_object());
+    REQUIRE(response.success == false);
+    REQUIRE(response.errorMessage.empty());
+    REQUIRE(response.responseId.empty());
 }
 
 TEST_CASE("LLMResponse toString") {
     LLMResponse response;
     response.success = true;
-    response.result = nlohmann::json::object({{"key", "value"}});
+    response.result = json::object({{"key", "value"}});
     response.errorMessage = "no error";
     response.responseId = "test_id";
-    
+
     std::string result = response.toString();
-    
-    CHECK(result.find("true") != std::string::npos);
-    CHECK(result.find("key") != std::string::npos);
-    CHECK(result.find("value") != std::string::npos);
-    CHECK(result.find("test_id") != std::string::npos);
+
+    REQUIRE(result.find("true") != std::string::npos);
+    REQUIRE(result.find("key") != std::string::npos);
+    REQUIRE(result.find("value") != std::string::npos);
+    REQUIRE(result.find("test_id") != std::string::npos);
 }
 
 TEST_CASE("LLMUsage calculations") {
     LLMUsage usage;
     usage.inputTokens = 100;
     usage.outputTokens = 50;
-    
-    CHECK(usage.totalTokens() == 150);
-    CHECK(usage.inputTokens == 100);
-    CHECK(usage.outputTokens == 50);
+
+    REQUIRE(usage.totalTokens() == 150);
+    REQUIRE(usage.inputTokens == 100);
+    REQUIRE(usage.outputTokens == 50);
 }
 
-TEST_CASE("LLMErrorCode utilities") {
-    // Test string to error code conversion
-    CHECK(LLMTypeUtils::stringToErrorCode("network error") == LLMErrorCode::NetworkError);
-    CHECK(LLMTypeUtils::stringToErrorCode("authentication failed") == LLMErrorCode::AuthenticationError);
-    CHECK(LLMTypeUtils::stringToErrorCode("rate limit exceeded") == LLMErrorCode::RateLimitError);
-    CHECK(LLMTypeUtils::stringToErrorCode("invalid request") == LLMErrorCode::InvalidRequest);
-    CHECK(LLMTypeUtils::stringToErrorCode("model not found") == LLMErrorCode::ModelNotFound);
-    CHECK(LLMTypeUtils::stringToErrorCode("internal server error") == LLMErrorCode::InternalError);
-    CHECK(LLMTypeUtils::stringToErrorCode("unknown error") == LLMErrorCode::Unknown);
-    
-    // Test error code to string conversion
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::None) == "None");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::NetworkError) == "Network Error");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::AuthenticationError) == "Authentication Error");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::RateLimitError) == "Rate Limit Error");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::InvalidRequest) == "Invalid Request");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::ModelNotFound) == "Model Not Found");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::InternalError) == "Internal Error");
-    CHECK(LLMTypeUtils::errorCodeToString(LLMErrorCode::Unknown) == "Unknown Error");
-} 
+TEST_CASE("LLMErrorCode string conversion") {
+    // Test toString function
+    REQUIRE(toString(LLMErrorCode::None) == "None");
+    REQUIRE(toString(LLMErrorCode::NetworkError) == "NetworkError");
+    REQUIRE(toString(LLMErrorCode::AuthenticationError) == "AuthenticationError");
+    REQUIRE(toString(LLMErrorCode::RateLimitError) == "RateLimitError");
+    REQUIRE(toString(LLMErrorCode::InvalidRequest) == "InvalidRequest");
+    REQUIRE(toString(LLMErrorCode::ModelNotFound) == "ModelNotFound");
+    REQUIRE(toString(LLMErrorCode::InternalError) == "InternalError");
+    REQUIRE(toString(LLMErrorCode::Unknown) == "Unknown");
+}
+
+TEST_CASE("LLMRequestConfig with structured output") {
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = "gpt-4o";
+    config.functionName = "extract_data";
+    config.jsonSchema = R"({"type": "object", "properties": {"result": {"type": "string"}}})";
+    config.randomness = 0.3f;
+    config.maxTokens = 150;
+
+    REQUIRE(config.functionName == "extract_data");
+    REQUIRE(config.jsonSchema.find("object") != std::string::npos);
+    REQUIRE(config.randomness == Catch::Approx(0.3f));
+    REQUIRE(config.maxTokens == 150);
+}
+
+TEST_CASE("LLMRequest with previous response") {
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = "gpt-4o";
+
+    LLMRequest request(config, "Follow up question", {}, "previous-response-id");
+
+    REQUIRE(request.prompt == "Follow up question");
+    REQUIRE(request.previousResponseId == "previous-response-id");
+}
+
+TEST_CASE("LLMResponse with usage tracking") {
+    LLMResponse response;
+    response.success = true;
+    response.responseId = "resp-123";
+    response.result = json::object({{"text", "Generated response"}});
+    response.usage.inputTokens = 50;
+    response.usage.outputTokens = 25;
+
+    REQUIRE(response.success == true);
+    REQUIRE(response.responseId == "resp-123");
+    REQUIRE(response.result["text"] == "Generated response");
+    REQUIRE(response.usage.inputTokens == 50);
+    REQUIRE(response.usage.outputTokens == 25);
+    REQUIRE(response.usage.totalTokens() == 75);
+}
