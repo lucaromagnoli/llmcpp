@@ -164,7 +164,8 @@ main() {
     echo "  1. Update version in CMakeLists.txt and vcpkg.json"
     echo "  2. Create a git commit with the version changes"
     echo "  3. Create and push a git tag v$new_version"
-    echo "  4. Trigger GitHub Actions to create a release"
+    echo "  4. Push the current branch to origin"
+    echo "  5. Trigger GitHub Actions to create a release (if on main branch)"
     echo ""
     read -p "Continue? (y/N): " -n 1 -r
     echo ""
@@ -185,7 +186,12 @@ main() {
     # Create and push tag
     print_info "Creating and pushing tag v$new_version..."
     git tag "v$new_version"
-    git push origin main
+    
+    # Get current branch name
+    local current_branch
+    current_branch=$(git branch --show-current)
+    print_info "Pushing current branch: $current_branch"
+    git push origin "$current_branch"
     git push origin "v$new_version"
     
     print_success "Release v$new_version created!"
