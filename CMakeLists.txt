@@ -65,7 +65,7 @@ target_link_libraries(llmcpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
 # Export the library for use by other projects
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(GNUInstallDirs)
-    
+
     install(TARGETS llmcpp nlohmann_json
         EXPORT llmcpp-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -73,21 +73,21 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
     )
-    
+
     install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-    
+
     install(EXPORT llmcpp-targets
         FILE llmcpp-targets.cmake
         NAMESPACE llmcpp::
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llmcpp
     )
-    
+
     # Examples (optional)
     option(LLMCPP_BUILD_EXAMPLES "Build examples" OFF)
     if(LLMCPP_BUILD_EXAMPLES)
         add_subdirectory(examples)
     endif()
-    
+
     # Tests (optional)
     option(LLMCPP_BUILD_TESTS "Build tests" OFF)
     if(LLMCPP_BUILD_TESTS)

@@ -68,7 +68,9 @@ jobs:
     - name: Test
       working-directory: build
       timeout-minutes: 10
-      run: ctest --output-on-failure -C ${{ matrix.build_type }}
+      run: |
+        echo "Running CI-safe tests (excluding integration tests)..."
+        ./tests/llmcpp_tests "~[integration]" --reporter compact
 
     - name: Upload build artifacts
       if: failure()
