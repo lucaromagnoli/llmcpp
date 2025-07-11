@@ -1,63 +1,46 @@
 #pragma once
 
 /**
- * llmcpp - Modern C++20 Library for Large Language Model APIs
+ * @file llmcpp.h
+ * @brief Main header file for the llmcpp library
  *
- * A unified interface for interacting with Large Language Model APIs
- * with support for async operations, streaming, and multiple providers.
- *
- * Copyright (c) 2025 Nomad Monad
- * Licensed under the MIT License
+ * This header provides a unified interface for Large Language Model APIs
+ * with support for multiple providers, async operations, and modern C++20 features.
  */
 
-// Core types and interfaces
+// Core functionality
+#include "core/ClientManager.h"
 #include "core/LLMClient.h"
 #include "core/LLMTypes.h"
 
-// Provider implementations
+// OpenAI provider
 #include "openai/OpenAIClient.h"
-#include "openai/OpenAIModels.h"
-#include "openai/OpenAIUtils.h"
+#include "openai/OpenAITypes.h"
 
-// Provider management
+// Version information
+#include "llmcpp_version.h"
+
+// Provider factory
 #include "providers/ClientFactory.h"
-#include "providers/ClientManager.h"
-
-namespace llmcpp {
-// Library version
-constexpr const char* VERSION = "1.0.0";
-
-// Convenience aliases
-using Request = LLMRequest;
-using Response = LLMResponse;
-using Config = LLMRequestConfig;
-using Client = LLMClient;
-using ErrorCode = LLMErrorCode;
-using Usage = LLMUsage;
-
-// Callback aliases
-using ResponseCallback = LLMResponseCallback;
-using StreamCallback = LLMStreamCallback;
-}  // namespace llmcpp
 
 /**
- * Quick start example:
+ * @namespace llmcpp
+ * @brief Main namespace for the llmcpp library
  *
- * #include <llmcpp.h>
- *
- * auto client = llmcpp::ClientFactory::createOpenAIClient("your-api-key");
- *
- * llmcpp::Config config;
- * config.client = "openai";
- * config.model = "gpt-4";
- * config.maxTokens = 100;
- *
- * llmcpp::Request request;
- * request.config = config;
- * request.prompt = "Hello, how are you?";
- *
- * auto response = client->sendRequest(request);
- * if (response.success) {
- *     std::cout << response.result.dump() << std::endl;
- * }
+ * Contains all public API classes and functions for interacting with
+ * Large Language Model providers.
  */
+namespace llmcpp {
+
+// Export main types for convenience
+using LLMClient = ::LLMClient;
+using LLMRequest = ::LLMRequest;
+using LLMResponse = ::LLMResponse;
+using LLMRequestConfig = ::LLMRequestConfig;
+using LLMUsage = ::LLMUsage;
+using ClientManager = ::ClientManager;
+
+// OpenAI types
+using OpenAIClient = ::OpenAIClient;
+
+}  // namespace llmcpp

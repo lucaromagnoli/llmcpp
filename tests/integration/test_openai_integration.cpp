@@ -217,9 +217,44 @@ TEST_CASE("OpenAI Integration - Responses API specific", "[openai][integration][
         REQUIRE(response.success == true);
         REQUIRE(!response.responseId.empty());
 
+        // Validate the structured response conforms to our JSON schema
+        REQUIRE(response.result.contains("text"));
+
+        // Parse the structured output
+        auto responseText = response.result["text"].get<std::string>();
+        std::cout << "Structured output: " << responseText << std::endl;
+
+        // For sentiment analysis, the response should be JSON-formatted
+        try {
+            auto parsedOutput = json::parse(responseText);
+
+            // Validate required fields exist
+            REQUIRE(parsedOutput.contains("sentiment"));
+            REQUIRE(parsedOutput.contains("confidence"));
+
+            // Validate sentiment is one of the allowed enum values
+            std::string sentiment = parsedOutput["sentiment"].get<std::string>();
+            REQUIRE((sentiment == "positive" || sentiment == "negative" || sentiment == "neutral"));
+
+            // Validate confidence is a number between 0 and 1
+            REQUIRE(parsedOutput["confidence"].is_number());
+            double confidence = parsedOutput["confidence"].get<double>();
+            REQUIRE(confidence >= 0.0);
+            REQUIRE(confidence <= 1.0);
+
+            // For this positive sentiment input, we expect positive sentiment
+            REQUIRE(sentiment == "positive");
+            REQUIRE(confidence > 0.5);  // Should be fairly confident about positive sentiment
+
+            std::cout << "✅ JSON Schema validation passed!" << std::endl;
+            std::cout << "Sentiment: " << sentiment << ", Confidence: " << confidence << std::endl;
+
+        } catch (const json::exception& e) {
+            FAIL("Response is not valid JSON: " + std::string(e.what()));
+        }
+
         std::cout << "✅ Responses API call successful!" << std::endl;
         std::cout << "Response ID: " << response.responseId << std::endl;
-        std::cout << "Result: " << response.result.dump(2) << std::endl;
     }
 }
 
