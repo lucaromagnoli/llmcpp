@@ -1,15 +1,42 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(llmcpp VERSION 1.0.0)
+project(llmcpp VERSION 1.0.0 LANGUAGES CXX)
 
-# Set C++ standard
+# Set version variables for easier access
+set(LLMCPP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(LLMCPP_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(LLMCPP_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(LLMCPP_VERSION ${PROJECT_VERSION})
+
+# Generate version header
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/llmcpp_version.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/include/llmcpp_version.h"
+    @ONLY
+)
+
+# C++ Standard
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Include FetchContent for dependencies
+# Build options
+option(LLMCPP_BUILD_TESTS "Build tests" OFF)
+option(LLMCPP_BUILD_EXAMPLES "Build examples" OFF)
+
+# Compiler-specific options
+if(MSVC)
+    add_compile_options(/W4)
+else()
+    add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
+
+# Find dependencies
+find_package(OpenSSL REQUIRED)
+
+# Use FetchContent for dependencies
 include(FetchContent)
 
-# Fetch nlohmann/json
+# nlohmann/json
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -17,81 +44,125 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# Fetch cpp-httplib
+# cpp-httplib  
 FetchContent_Declare(
     httplib
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
-    GIT_TAG v0.14.3
+    GIT_TAG v0.15.3
 )
 FetchContent_MakeAvailable(httplib)
 
-# Create the library
-add_library(llmcpp STATIC
+# Source files
+set(LLMCPP_SOURCES
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
+    src/providers/ClientManager.cpp
+    src/providers/ClientFactory.cpp
     src/openai/OpenAIClient.cpp
     src/openai/OpenAIHttpClient.cpp
     src/openai/OpenAIResponsesApi.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAIUtils.cpp
-    src/providers/ClientFactory.cpp
-    src/providers/ClientManager.cpp
 )
+
+# Create library
+add_library(llmcpp ${LLMCPP_SOURCES})
 
 # Add include directories
-target_include_directories(llmcpp PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+target_include_directories(llmcpp 
+    PUBLIC 
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+        $<INSTALL_INTERFACE:include>
 )
 
-# Link dependencies - nlohmann_json needs to be PUBLIC since it's used in headers
-target_link_libraries(llmcpp PUBLIC
-    nlohmann_json::nlohmann_json
+# Link libraries
+target_link_libraries(llmcpp 
+    PUBLIC 
+        nlohmann_json::nlohmann_json
+    PRIVATE
+        httplib::httplib
+        OpenSSL::SSL 
+        OpenSSL::Crypto
 )
 
-target_link_libraries(llmcpp PRIVATE
-    httplib::httplib
-)
-
-# Compile definitions for httplib
-target_compile_definitions(llmcpp PUBLIC
-    CPPHTTPLIB_OPENSSL_SUPPORT
-)
-
-# Find OpenSSL for HTTPS support
-find_package(OpenSSL REQUIRED)
-target_link_libraries(llmcpp PRIVATE OpenSSL::SSL OpenSSL::Crypto)
-
-# Export the library for use by other projects
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    include(GNUInstallDirs)
-
-    install(TARGETS llmcpp nlohmann_json
-        EXPORT llmcpp-targets
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+# Platform-specific libraries
+if(WIN32)
+    target_link_libraries(llmcpp PRIVATE ws2_32 wsock32)
+elseif(APPLE)
+    target_link_libraries(llmcpp PRIVATE 
+        "-framework CoreFoundation" 
+        "-framework Security"
     )
+endif()
 
-    install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+# Add examples if requested
+if(LLMCPP_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
 
-    install(EXPORT llmcpp-targets
-        FILE llmcpp-targets.cmake
-        NAMESPACE llmcpp::
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/llmcpp
-    )
+# Add tests if requested
+if(LLMCPP_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 
-    # Examples (optional)
-    option(LLMCPP_BUILD_EXAMPLES "Build examples" OFF)
-    if(LLMCPP_BUILD_EXAMPLES)
-        add_subdirectory(examples)
-    endif()
+# Installation
+include(GNUInstallDirs)
 
-    # Tests (optional)
-    option(LLMCPP_BUILD_TESTS "Build tests" OFF)
-    if(LLMCPP_BUILD_TESTS)
-        enable_testing()
-        add_subdirectory(tests)
-    endif()
+# Install the library
+install(TARGETS llmcpp
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+)
+
+# Install headers
+install(DIRECTORY include/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
+)
+
+# Install generated version header
+install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/llmcpp_version.h"
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# CPack configuration for releases
+include(CPack)
+
+set(CPACK_PACKAGE_NAME "llmcpp")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Modern C++20 library for Large Language Model APIs")
+set(CPACK_PACKAGE_DESCRIPTION "A unified interface for Large Language Model APIs with support for multiple providers, async operations, and modern C++20 features.")
+set(CPACK_PACKAGE_VENDOR "llmcpp")
+set(CPACK_PACKAGE_CONTACT "https://github.com/lucaromagnoli/llmcpp")
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+set(CPACK_RESOURCE_FILE_README "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+
+# Package file names
+set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}")
+
+# Source package
+set(CPACK_SOURCE_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-source")
+set(CPACK_SOURCE_IGNORE_FILES
+    /.git/
+    /build/
+    /\.DS_Store
+    /\.env
+    /\.vscode/
+    /\.idea/
+    /cmake-build-*/
+    /\.clion/
+)
+
+# Platform-specific settings
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+    set(CPACK_SOURCE_GENERATOR "ZIP")
+elseif(APPLE)
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_SOURCE_GENERATOR "TGZ")
+else()
+    set(CPACK_GENERATOR "TGZ")
+    set(CPACK_SOURCE_GENERATOR "TGZ")
 endif()
