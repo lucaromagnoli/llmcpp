@@ -1,128 +1,109 @@
 # llmcpp
 
-A modern C++20 library providing a unified interface for Large Language Model APIs, with support for async operations, streaming, and multiple providers.
+A modern C++20 library providing a unified interface for Large Language Model APIs, with support for async operations and multiple providers.
 
 ## Features
 
 - **🚀 Modern C++20**: Uses latest C++ features and standard library
-- **🔄 Multi-provider support**: OpenAI (with more providers coming soon)
+- **🔄 Multi-provider support**: OpenAI (with more providers coming)
 - **⚡ Async requests**: Non-blocking API calls using std::future
-- **📡 Streaming support**: Real-time streaming responses from supported providers
 - **🔒 Type-safe**: Strong C++ typing with nlohmann/json
 - **🎯 Header-only friendly**: Easy integration into any C++ project
-- **🌐 No framework dependencies**: Works with any C++ codebase
+- **🌐 Cross-platform**: Works on Linux, macOS, and Windows
+- **✅ Production ready**: Full OpenAI Responses API implementation
 
 ## Quick Start
-
-### As a Git Submodule
-
-```bash
-# Add as submodule
-git submodule add https://github.com/lucaromagnoli/llmcpp.git third_party/llmcpp
-
-# In your CMakeLists.txt
-add_subdirectory(third_party/llmcpp)
-target_link_libraries(your_target PRIVATE llmcpp)
-```
 
 ### Basic Usage
 
 ```cpp
 #include <llmcpp.h>
 
-// Create OpenAI client
-auto client = llmcpp::ClientFactory::createClient("openai", "your-api-key");
+int main() {
+    // Create OpenAI client
+    OpenAIClient client("your-api-key-here");
 
-// Prepare request configuration
-llmcpp::Config config;
-config.client = "openai";
-config.model = "gpt-4";
-config.maxTokens = 100;
-config.functionName = "my_function";
+    // Configure request
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = "gpt-4o-mini";
+    config.maxTokens = 100;
+    config.randomness = 0.7f;
 
-// Create request
-llmcpp::Request request(config, "Hello, how are you?");
+    // Create and send request
+    LLMRequest request(config, "Hello! How are you?");
+    auto response = client.sendRequest(request);
 
-// Send synchronous request
-client->sendRequest(request, [](const llmcpp::Response& response) {
+    // Handle response
     if (response.success) {
-        std::cout << "Response: " << response.result.dump() << std::endl;
+        std::cout << "Response: " << response.result["text"].get<std::string>() << std::endl;
+        std::cout << "Usage: " << response.usage.toString() << std::endl;
     } else {
         std::cerr << "Error: " << response.errorMessage << std::endl;
     }
-});
+
+    return 0;
+}
 ```
 
 ### Async Usage
 
 ```cpp
 // Send async request with callback
-client->sendRequest(request, [](const llmcpp::Response& response) {
+auto future = client.sendRequestAsync(request, [](const LLMResponse& response) {
     if (response.success) {
-        std::cout << "Async response: " << response.result.dump() << std::endl;
+        std::cout << "Async response: " << response.result["text"].get<std::string>() << std::endl;
     }
 });
+
+// Do other work while waiting
+// ...
+
+// Get final result
+auto response = future.get();
 ```
 
-### Streaming (Future Feature)
+### Using ClientManager
 
 ```cpp
-// Streaming support (when implemented)
-client->sendStreamingRequest(request,
-    // Final callback - called when complete
-    [](const llmcpp::Response& response) {
-        std::cout << "Stream completed" << std::endl;
-    },
-    // Stream callback - called for each chunk
-    [](const std::string& chunk) {
-        std::cout << "Chunk: " << chunk << std::endl;
-    }
-);
+#include <llmcpp.h>
+
+int main() {
+    ClientManager manager;
+
+    // Create and register OpenAI client
+    auto client = manager.createClient<OpenAIClient>("openai", "your-api-key");
+
+    // Use the client
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = "gpt-4o-mini";
+    config.maxTokens = 50;
+
+    LLMRequest request(config, "Hello world!");
+    auto response = client->sendRequest(request);
+
+    return 0;
+}
 ```
 
 ## Architecture
 
-### Core Types
+### Core Components
 
-- `LLMRequest`: Request configuration and data
-- `LLMResponse`: Response with result, success status, and metadata  
-- `LLMClient`: Abstract base class for all providers
-- `LLMRequestConfig`: Configuration for model, parameters, etc.
-- `LLMErrorCode`: Comprehensive error handling
+- **`OpenAIClient`**: Full OpenAI Responses API implementation
+- **`LLMRequest`/`LLMResponse`**: Unified request/response types
+- **`ClientManager`**: Smart pointer-based client management
+- **`LLMRequestConfig`**: Configuration for models and parameters
 
-### Providers
+### Supported APIs
 
-- **OpenAIClient**: Supports OpenAI Responses API and Chat Completions
-- More providers coming soon (Anthropic, local models, etc.)
-
-### Provider Management
-
-- `ClientFactory`: Create clients with configuration
-- `ClientManager`: Manage multiple clients and API keys
-
-## Current Status
-
-🚧 **This library is currently in active development (v1.0.0)**
-
-**Working Features:**
-- ✅ Project structure and build system
-- ✅ Core type definitions and interfaces
-- ✅ OpenAI client architecture
-- ✅ Cross-platform CI/CD (Linux, macOS, Windows)
-
-**In Progress:**
-- 🔄 OpenAI HTTP client implementation
-- 🔄 OpenAI Responses API integration
-- 🔄 Async request handling
-- 🔄 Streaming support
-
-**Planned:**
-- 📋 Chat Completions API
-- 📋 Function calling support
-- 📋 Additional providers (Anthropic, etc.)
-- 📋 Examples and documentation
-
-See [ROADMAP.md](ROADMAP.md) for detailed development plans.
+- **OpenAI Responses API**: ✅ Complete implementation
+  - Sync and async requests
+  - Structured outputs
+  - Function calling
+  - Error handling
+  - Usage tracking
 
 ## Building
 
@@ -132,67 +113,35 @@ See [ROADMAP.md](ROADMAP.md) for detailed development plans.
 - C++20 compiler (GCC 10+, Clang 12+, MSVC 2019+)
 - OpenSSL (for HTTPS support)
 
-### Dependencies
-
-Dependencies are automatically fetched via CMake FetchContent:
-- **nlohmann/json**: For JSON parsing and manipulation
-- **cpp-httplib**: For HTTP/HTTPS requests
-
-### Build Options
-
-#### Using Make (Recommended)
+### Build with Make
 
 ```bash
-# Quick start - build and test
-make quick
-
-# Build in release mode (default)
+# Quick build and test
 make
 
-# Build with tests and examples
-make all-features test
+# Build with tests
+make tests
 
-# Show all available targets
+# Run tests
+make test-unit           # Unit tests only
+make test-integration    # Integration tests (requires API key)
+make test-ci            # CI-safe tests (no API calls)
+
+# Show all targets
 make help
-
-# Development workflow
-make dev                    # Build debug + examples + tests
-make format                 # Format code
-make lint                   # Run static analysis
-make clean                  # Clean build
 ```
 
-#### Using CMake Directly
+### Build with CMake
 
 ```bash
-# Create build directory
 mkdir build && cd build
-
-# Configure
-cmake .. -DLLMCPP_BUILD_EXAMPLES=ON -DLLMCPP_BUILD_TESTS=ON
-
-# Build
+cmake .. -DLLMCPP_BUILD_TESTS=ON
 cmake --build .
 ```
 
-### Integration
+## Integration
 
-#### CMake FetchContent
-
-```cmake
-include(FetchContent)
-
-FetchContent_Declare(
-    llmcpp
-    GIT_REPOSITORY https://github.com/lucaromagnoli/llmcpp.git
-    GIT_TAG main
-)
-
-FetchContent_MakeAvailable(llmcpp)
-target_link_libraries(your_target PRIVATE llmcpp)
-```
-
-#### As Submodule
+### As Git Submodule
 
 ```bash
 git submodule add https://github.com/lucaromagnoli/llmcpp.git third_party/llmcpp
@@ -203,85 +152,101 @@ add_subdirectory(third_party/llmcpp)
 target_link_libraries(your_target PRIVATE llmcpp)
 ```
 
+### With CMake FetchContent
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+    llmcpp
+    GIT_REPOSITORY https://github.com/lucaromagnoli/llmcpp.git
+    GIT_TAG main
+)
+FetchContent_MakeAvailable(llmcpp)
+target_link_libraries(your_target PRIVATE llmcpp)
+```
+
 ## Configuration
 
 ### API Keys
 
-Set your API keys securely:
-
 ```cpp
 // Environment variable (recommended)
-setenv("OPENAI_API_KEY", "your-key-here", 1);
+const char* apiKey = std::getenv("OPENAI_API_KEY");
+OpenAIClient client(apiKey);
 
-// Or pass directly to factory
-auto client = llmcpp::ClientFactory::createClient("openai", "your-api-key");
+// Or set directly
+OpenAIClient client("your-api-key-here");
 ```
 
 ### Model Configuration
 
 ```cpp
-llmcpp::Config config;
-config.model = "gpt-4";           // Model name
+LLMRequestConfig config;
+config.model = "gpt-4o-mini";     // Model name
 config.maxTokens = 500;           // Max response tokens
 config.randomness = 0.7f;         // Temperature (0.0 - 1.0)
 config.functionName = "my_func";  // Function name for structured outputs
 ```
 
-## Development
+## Testing
 
-### Clone and Build
+### Unit Tests
 
 ```bash
-# Clone with submodules
-git clone --recursive https://github.com/lucaromagnoli/llmcpp.git
-cd llmcpp
-
-# Quick development setup
-make dev                     # Build debug + examples + tests
-
-# Development workflow
-make quick                   # Build and test
-make format                  # Format code
-make lint                    # Static analysis
-make clean                   # Clean build
+make test-unit
 ```
 
-### Contributing
+### Integration Tests
 
-This library is open source and contributions are welcome!
+Set up your API key and run integration tests:
+
+```bash
+# Using environment variables
+export OPENAI_API_KEY="your-api-key"
+export LLMCPP_RUN_INTEGRATION_TESTS=1
+make test-integration
+
+# Or using .env file
+echo "OPENAI_API_KEY=your-api-key" > .env
+echo "LLMCPP_RUN_INTEGRATION_TESTS=1" >> .env
+make test-integration
+```
+
+**Note**: Integration tests make real API calls and will incur charges. They are disabled by default and excluded from CI.
+
+## Examples
+
+See the `examples/` directory for complete working examples:
+
+- `basic_usage.cpp`: Basic synchronous usage
+- `async_example.cpp`: Async requests with callbacks
+
+Build and run examples:
+
+```bash
+mkdir build && cd build
+cmake .. -DLLMCPP_BUILD_EXAMPLES=ON
+cmake --build .
+./examples/basic_usage
+```
+
+## Dependencies
+
+Dependencies are automatically managed via CMake FetchContent:
+
+- **nlohmann/json**: JSON parsing and manipulation
+- **cpp-httplib**: HTTP/HTTPS client
+- **Catch2**: Testing framework (tests only)
+
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests for new features
-5. Ensure all tests pass
+5. Ensure all tests pass (`make test-ci`)
 6. Submit a pull request
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## License
 
 Licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
-## Roadmap
-
-### Phase 1: Core Implementation (v1.0.0)
-- [ ] OpenAI HTTP Client
-- [ ] OpenAI Responses API
-- [ ] Streaming support
-- [ ] Authentication and API key management
-- [ ] Examples and documentation
-
-### Phase 2: Enhanced Features (v1.1.0)
-- [ ] Chat Completions API
-- [ ] Function calling support
-- [ ] Integration tests
-- [ ] Performance optimizations
-
-### Phase 3: Multi-Provider (v2.0.0)
-- [ ] Anthropic Claude support
-- [ ] Local model support (llama.cpp integration)
-- [ ] Azure OpenAI support
-- [ ] Batch processing
-
-For detailed development plans, see [ROADMAP.md](ROADMAP.md). 

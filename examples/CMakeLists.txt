@@ -11,4 +11,4 @@ target_link_libraries(async_example PRIVATE llmcpp)
 # Install examples (optional)
 install(TARGETS basic_usage async_example
     DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
-) 
+)

@@ -34,7 +34,8 @@ TEST_CASE("OpenAIClient API type detection", "[openai][client][api-detection]") 
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "extract_data";
-        config.jsonSchema = R"({"type": "object", "properties": {"result": {"type": "string"}}})";
+        config.jsonSchema =
+            "{\"type\": \"object\", \"properties\": {\"result\": {\"type\": \"string\"}}}";
 
         LLMRequest request(config, "Extract data from this text");
 
@@ -108,14 +109,16 @@ TEST_CASE("OpenAIClient request building", "[openai][client][request-building]")
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "analyze_sentiment";
-        config.jsonSchema = R"({
-            "type": "object",
-            "properties": {
-                "sentiment": {"type": "string", "enum": ["positive", "negative", "neutral"]},
-                "confidence": {"type": "number", "minimum": 0, "maximum": 1}
-            },
-            "required": ["sentiment", "confidence"]
-        })";
+        config.jsonSchema =
+            "{"
+            "\"type\": \"object\","
+            "\"properties\": {"
+            "\"sentiment\": {\"type\": \"string\", \"enum\": [\"positive\", \"negative\", "
+            "\"neutral\"]},"
+            "\"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1}"
+            "},"
+            "\"required\": [\"sentiment\", \"confidence\"]"
+            "}";
         config.randomness = 0.3f;
         config.maxTokens = 100;
 
@@ -234,60 +237,64 @@ TEST_CASE("OpenAIClient tool usage", "[openai][client][tools]") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
         config.functionName = "calculate_tip";
-        config.jsonSchema = R"({
-            "type": "object",
-            "properties": {
-                "bill_amount": {"type": "number", "description": "The total bill amount"},
-                "tip_percentage": {"type": "number", "description": "The tip percentage (0-100)"
-    }
-    , "tip_amount" : {"type" : "number", "description" : "The calculated tip amount"},
-                     "total_amount"
-        : {"type" : "number", "description" : "The total amount including tip"}
-}
-, "required" : [ "bill_amount", "tip_percentage", "tip_amount", "total_amount" ]
-})";
-        
+        config.jsonSchema =
+            "{"
+            "\"type\": \"object\","
+            "\"properties\": {"
+            "\"bill_amount\": {\"type\": \"number\", \"description\": \"The total bill amount\"},"
+            "\"tip_percentage\": {\"type\": \"number\", \"description\": \"The tip percentage "
+            "(0-100)\"},"
+            "\"tip_amount\": {\"type\": \"number\", \"description\": \"The calculated tip "
+            "amount\"},"
+            "\"total_amount\": {\"type\": \"number\", \"description\": \"The total amount "
+            "including tip\"}"
+            "},"
+            "\"required\": [\"bill_amount\", \"tip_percentage\", \"tip_amount\", \"total_amount\"]"
+            "}";
+
         LLMRequest request(config, "Calculate a 20% tip on a $50 bill");
 
-REQUIRE(request.config.functionName == "calculate_tip");
-REQUIRE(request.config.jsonSchema.find("bill_amount") != std::string::npos);
-REQUIRE(request.config.jsonSchema.find("tip_percentage") != std::string::npos);
-REQUIRE(request.prompt.find("20%") != std::string::npos);
-REQUIRE(request.prompt.find("$50") != std::string::npos);
-}
+        REQUIRE(request.config.functionName == "calculate_tip");
+        REQUIRE(request.config.jsonSchema.find("bill_amount") != std::string::npos);
+        REQUIRE(request.config.jsonSchema.find("tip_percentage") != std::string::npos);
+        REQUIRE(request.prompt.find("20%") != std::string::npos);
+        REQUIRE(request.prompt.find("$50") != std::string::npos);
+    }
 
-SECTION("Complex tool with nested objects") {
-    LLMRequestConfig config;
-    config.model = "gpt-4o";
-    config.functionName = "analyze_document";
-    config.jsonSchema = R"({
-            "type": "object",
-            "properties": {
-                "summary": {"type": "string", "description": "Brief summary of the document"},
-                "key_points": {
-                    "type": "array",
-                    "items": {"type": "string"},
-                    "description": "List of key points"
-                },
-                "metadata": {
-                    "type": "object",
-                    "properties": {
-                        "document_type": {"type": "string"},
-                        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
-                        "language": {"type": "string"}
-                    }
-                }
-            },
-            "required": ["summary", "key_points", "metadata"]
-        })";
+    SECTION("Complex tool with nested objects") {
+        LLMRequestConfig config;
+        config.model = "gpt-4o";
+        config.functionName = "analyze_document";
+        config.jsonSchema =
+            "{"
+            "\"type\": \"object\","
+            "\"properties\": {"
+            "\"summary\": {\"type\": \"string\", \"description\": \"Brief summary of the "
+            "document\"},"
+            "\"key_points\": {"
+            "\"type\": \"array\","
+            "\"items\": {\"type\": \"string\"},"
+            "\"description\": \"List of key points\""
+            "},"
+            "\"metadata\": {"
+            "\"type\": \"object\","
+            "\"properties\": {"
+            "\"document_type\": {\"type\": \"string\"},"
+            "\"confidence\": {\"type\": \"number\", \"minimum\": 0, \"maximum\": 1},"
+            "\"language\": {\"type\": \"string\"}"
+            "}"
+            "}"
+            "},"
+            "\"required\": [\"summary\", \"key_points\", \"metadata\"]"
+            "}";
 
-    LLMRequest request(config, "Analyze this research paper about climate change impacts");
+        LLMRequest request(config, "Analyze this research paper about climate change impacts");
 
-    REQUIRE(request.config.functionName == "analyze_document");
-    REQUIRE(request.config.jsonSchema.find("key_points") != std::string::npos);
-    REQUIRE(request.config.jsonSchema.find("metadata") != std::string::npos);
-    REQUIRE(request.config.jsonSchema.find("document_type") != std::string::npos);
-}
+        REQUIRE(request.config.functionName == "analyze_document");
+        REQUIRE(request.config.jsonSchema.find("key_points") != std::string::npos);
+        REQUIRE(request.config.jsonSchema.find("metadata") != std::string::npos);
+        REQUIRE(request.config.jsonSchema.find("document_type") != std::string::npos);
+    }
 }
 
 TEST_CASE("OpenAIClient edge cases", "[openai][client][edge-cases]") {

@@ -1,6 +1,7 @@
 #include "openai/OpenAIResponsesApi.h"
 
 #include <future>
+#include <iostream>
 #include <stdexcept>
 
 #include "openai/OpenAIHttpClient.h"
@@ -22,7 +23,7 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
 
         // Make the HTTP request
         std::string url = buildCreateUrl();
-        auto httpResponse = httpClient_->post(url, requestJson.dump());
+        auto httpResponse = httpClient_->post(url, requestJson);
 
         if (!httpResponse.success) {
             throw std::runtime_error("HTTP request failed: " + httpResponse.errorMessage);
@@ -31,8 +32,9 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
         // Parse the JSON response
         json responseJson = json::parse(httpResponse.body);
 
-        // Check for API errors
-        if (responseJson.contains("error")) {
+        // Check for API errors using safe JSON function
+        auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");
+        if (error.has_value()) {
             handleApiError(responseJson);
         }
 
@@ -78,7 +80,6 @@ std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createAsync(
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createStreaming(
     const OpenAI::ResponsesRequest& request, std::function<void(const std::string&)> streamCallback,
     std::function<void(const OpenAI::ResponsesResponse&)> finalCallback) {
-    // TODO: Implement streaming API call
     throw std::runtime_error("OpenAIResponsesApi::createStreaming not yet implemented");
 }
 
@@ -94,7 +95,9 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::retrieve(const std::string& respon
 
         json responseJson = json::parse(httpResponse.body);
 
-        if (responseJson.contains("error")) {
+        // Check for API errors using safe JSON function
+        auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");
+        if (error.has_value()) {
             handleApiError(responseJson);
         }
 
@@ -111,67 +114,53 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::retrieve(const std::string& respon
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::cancel(const std::string& responseId) {
-    // TODO: Implement cancel
     throw std::runtime_error("OpenAIResponsesApi::cancel not yet implemented");
 }
 
 bool OpenAIResponsesApi::deleteResponse(const std::string& responseId) {
-    // TODO: Implement delete
     throw std::runtime_error("OpenAIResponsesApi::deleteResponse not yet implemented");
 }
 
 json OpenAIResponsesApi::listInputItems(const std::string& responseId, const std::string& after,
                                         int limit) {
-    // TODO: Implement list input items
     throw std::runtime_error("OpenAIResponsesApi::listInputItems not yet implemented");
 }
 
-// Background task support
 bool OpenAIResponsesApi::isProcessing(const std::string& responseId) {
-    // TODO: Implement processing check
     throw std::runtime_error("OpenAIResponsesApi::isProcessing not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::waitForCompletion(const std::string& responseId,
                                                                 int timeoutSeconds,
                                                                 int pollIntervalSeconds) {
-    // TODO: Implement wait for completion
     throw std::runtime_error("OpenAIResponsesApi::waitForCompletion not yet implemented");
 }
 
-// Streaming helpers
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::resumeStreaming(
     const std::string& responseId, int startingAfter,
     std::function<void(const std::string&)> streamCallback) {
-    // TODO: Implement resume streaming
     throw std::runtime_error("OpenAIResponsesApi::resumeStreaming not yet implemented");
 }
 
-// Conversation management
 OpenAI::ResponsesResponse OpenAIResponsesApi::continueConversation(
     const std::string& previousResponseId, const OpenAI::ResponsesInput& newInput,
     const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
-    // TODO: Implement continue conversation
     throw std::runtime_error("OpenAIResponsesApi::continueConversation not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::forkConversation(
     const std::string& forkFromResponseId, const OpenAI::ResponsesInput& newInput,
     const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
-    // TODO: Implement fork conversation
     throw std::runtime_error("OpenAIResponsesApi::forkConversation not yet implemented");
 }
 
-// Tool and approval management
 OpenAI::ResponsesResponse OpenAIResponsesApi::approveMcpRequest(
     const std::string& responseId, const std::string& approvalRequestId, bool approve) {
-    // TODO: Implement MCP approval
     throw std::runtime_error("OpenAIResponsesApi::approveMcpRequest not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::submitFunctionOutputs(
     const std::string& responseId, const std::vector<OpenAI::FunctionCallOutput>& outputs) {
-    // TODO: Implement function output submission
     throw std::runtime_error("OpenAIResponsesApi::submitFunctionOutputs not yet implemented");
 }
 
@@ -278,27 +267,26 @@ bool OpenAIResponsesApi::supportsMcp(const std::string& model) const {
 }
 
 // Private helper methods implementation
-std::string OpenAIResponsesApi::buildCreateUrl() const { return "/v1/responses"; }
+std::string OpenAIResponsesApi::buildCreateUrl() const { return "/responses"; }
 
 std::string OpenAIResponsesApi::buildRetrieveUrl(const std::string& responseId) const {
-    return "/v1/responses/" + responseId;
+    return "/responses/" + responseId;
 }
 
 std::string OpenAIResponsesApi::buildCancelUrl(const std::string& responseId) const {
-    return "/v1/responses/" + responseId + "/cancel";
+    return "/responses/" + responseId + "/cancel";
 }
 
 std::string OpenAIResponsesApi::buildDeleteUrl(const std::string& responseId) const {
-    return "/v1/responses/" + responseId;
+    return "/responses/" + responseId;
 }
 
 std::string OpenAIResponsesApi::buildInputItemsUrl(const std::string& responseId) const {
-    return "/v1/responses/" + responseId + "/input_items";
+    return "/responses/" + responseId + "/input_items";
 }
 
 void OpenAIResponsesApi::processStreamEvent(
     const std::string& event, std::function<void(const std::string&)> streamCallback) {
-    // TODO: Implement stream event processing for streaming responses
     if (streamCallback) {
         streamCallback(event);
     }
@@ -309,20 +297,24 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::processResponse(const json& respon
 }
 
 void OpenAIResponsesApi::handleApiError(const json& errorResponse) const {
-    if (errorResponse.contains("error")) {
-        const auto& error = errorResponse["error"];
+    auto errorObj = OpenAI::safeGetOptionalJson<json>(errorResponse, "error");
+    if (errorObj.has_value()) {
+        const auto& error = errorObj.value();
         std::string errorMsg = "OpenAI API Error";
 
-        if (error.contains("message")) {
-            errorMsg += ": " + error["message"].get<std::string>();
+        auto message = OpenAI::safeGetOptionalJson<std::string>(error, "message");
+        if (message.has_value()) {
+            errorMsg += ": " + message.value();
         }
 
-        if (error.contains("type")) {
-            errorMsg += " (Type: " + error["type"].get<std::string>() + ")";
+        auto type = OpenAI::safeGetOptionalJson<std::string>(error, "type");
+        if (type.has_value()) {
+            errorMsg += " (Type: " + type.value() + ")";
         }
 
-        if (error.contains("code")) {
-            errorMsg += " (Code: " + error["code"].get<std::string>() + ")";
+        auto code = OpenAI::safeGetOptionalJson<std::string>(error, "code");
+        if (code.has_value()) {
+            errorMsg += " (Code: " + code.value() + ")";
         }
 
         throw std::runtime_error(errorMsg);

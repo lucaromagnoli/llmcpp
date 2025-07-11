@@ -6,7 +6,6 @@
 
 #include "openai/OpenAIResponsesApi.h"
 
-// TODO: When implementing these classes, include their headers here:
 // #include "openai/OpenAIChatCompletionsApi.h"
 #include "openai/OpenAIHttpClient.h"
 
@@ -187,7 +186,7 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
             auto responsesResponse = sendResponsesRequest(responsesRequest);
             return responsesResponse.toLLMResponse();
         } else if (apiType == OpenAI::ApiType::CHAT_COMPLETIONS) {
-            // TODO: Implement Chat Completions API when needed
+            // Chat Completions API - not yet implemented
             throw std::runtime_error("Chat Completions API not yet implemented");
         } else {
             throw std::runtime_error("Unknown API type");
@@ -197,6 +196,20 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
         LLMResponse errorResponse;
         errorResponse.success = false;
         errorResponse.errorMessage = e.what();
+
+        // Try to preserve any error details in the result
+        try {
+            // Check if the error message contains JSON
+            std::string errorMsg = e.what();
+            if (errorMsg.find("{") != std::string::npos) {
+                auto start = errorMsg.find("{");
+                auto jsonPart = errorMsg.substr(start);
+                errorResponse.result = json::parse(jsonPart);
+            }
+        } catch (...) {
+            // If JSON parsing fails, just keep the error message
+        }
+
         return errorResponse;
     }
 }
@@ -218,7 +231,7 @@ std::future<LLMResponse> OpenAIClient::routeStreamingRequest(const LLMRequest& r
     return std::async(std::launch::async, [this, request, streamCallback, finalCallback]() {
         try {
             // For now, implement streaming as regular request with callback
-            // TODO: Implement real streaming when Responses API streaming is ready
+            // Real streaming will be implemented when Responses API streaming is ready
             auto response = routeRequest(request);
 
             if (streamCallback && response.success) {

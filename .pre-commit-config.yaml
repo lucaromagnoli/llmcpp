@@ -4,11 +4,20 @@ repos:
     hooks:
       - id: check-yaml
       - id: check-added-large-files
+        args: ['--maxkb=1000']
       - id: check-merge-conflict
+      - id: trailing-whitespace
+        types: [c++, markdown, json, yaml]
+      - id: end-of-file-fixer
+        types: [c++, markdown, json, yaml]
+      - id: check-case-conflict
 
-# Note: Our custom pre-commit hook (pre-commit.legacy) handles:
-# - Build validation
-# - Test execution  
-# - Code formatting (clang-format)
-# - Whitespace checking
-# This minimal config just adds basic file checks without conflicts 
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v18.1.8
+    hooks:
+      - id: clang-format
+        types_or: [c++, c]
+        args: [--style=file]
+
+# Code quality only - no build or test validation
+# Build validation should happen in CI, not pre-commit 

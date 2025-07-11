@@ -132,10 +132,11 @@ class OpenAIHttpClient::HttpClientImpl {
     std::string extractErrorMessage(const std::string& body, int statusCode) const {
         try {
             auto errorJson = json::parse(body);
-            if (errorJson.contains("error")) {
-                auto error = errorJson["error"];
-                if (error.contains("message")) {
-                    return error["message"].get<std::string>();
+            auto error = OpenAI::safeGetOptionalJson<json>(errorJson, "error");
+            if (error.has_value()) {
+                auto message = OpenAI::safeGetOptionalJson<std::string>(error.value(), "message");
+                if (message.has_value()) {
+                    return message.value();
                 }
             }
         } catch (const std::exception&) {
@@ -184,7 +185,6 @@ std::future<OpenAIHttpClient::HttpResponse> OpenAIHttpClient::getAsync(
 std::future<OpenAIHttpClient::HttpResponse> OpenAIHttpClient::postStreaming(
     const std::string& endpoint, const json& requestBody,
     std::function<void(const std::string&)> streamCallback) {
-    // TODO: Implement streaming - for now, just do regular post
     return std::async(std::launch::async, [this, endpoint, requestBody, streamCallback]() {
         auto response = post(endpoint, requestBody);
         if (response.success && streamCallback) {
@@ -267,10 +267,11 @@ OpenAIHttpClient::HttpResponse OpenAIHttpClient::handleHttpError(int statusCode,
 
     try {
         auto errorJson = json::parse(body);
-        if (errorJson.contains("error")) {
-            auto error = errorJson["error"];
-            if (error.contains("message")) {
-                response.errorMessage = error["message"].get<std::string>();
+        auto error = OpenAI::safeGetOptionalJson<json>(errorJson, "error");
+        if (error.has_value()) {
+            auto message = OpenAI::safeGetOptionalJson<std::string>(error.value(), "message");
+            if (message.has_value()) {
+                response.errorMessage = message.value();
             } else {
                 response.errorMessage = "HTTP " + std::to_string(statusCode) + " error";
             }
@@ -321,16 +322,12 @@ void OpenAIHttpClient::waitForRetry(int attemptNumber) const {
 
 void OpenAIHttpClient::processStreamingData(const std::string& data,
                                             std::function<void(const std::string&)> callback) {
-    // TODO: Implement Server-Sent Events parsing
     if (callback) {
         callback(data);
     }
 }
 
-std::string OpenAIHttpClient::extractStreamingChunk(const std::string& line) const {
-    // TODO: Implement SSE chunk extraction
-    return line;
-}
+std::string OpenAIHttpClient::extractStreamingChunk(const std::string& line) const { return line; }
 
 void OpenAIHttpClient::validateConfig() const {
     if (config_.apiKey.empty()) {

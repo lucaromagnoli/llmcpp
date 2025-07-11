@@ -21,7 +21,12 @@ help:
 	@echo "  tests          - Build with tests"
 	@echo ""
 	@echo "Testing:"
-	@echo "  test           - Run tests"
+	@echo "  test           - Run all tests (including integration)"
+	@echo "  test-unit      - Run unit tests only (no integration)"
+	@echo "  test-parsing   - Run parsing tests only"
+	@echo "  test-openai    - Run OpenAI-related tests (no integration)"
+	@echo "  test-integration - Run integration tests only"
+	@echo "  test-ci        - Run CI-safe tests (excludes integration)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  format         - Format code with clang-format"
@@ -32,6 +37,7 @@ help:
 	@echo "Examples:"
 	@echo "  make debug test          - Build in debug mode and run tests"
 	@echo "  make BUILD_TYPE=Debug    - Build in debug mode"
+	@echo "  make test-ci             - Run tests suitable for CI"
 
 # Build targets
 .PHONY: build
@@ -59,8 +65,33 @@ $(BUILD_DIR):
 # Testing targets
 .PHONY: test
 test: tests
-	@echo "Running tests..."
+	@echo "Running all tests..."
 	@cd $(BUILD_DIR) && ctest --output-on-failure -C $(BUILD_TYPE)
+
+.PHONY: test-unit
+test-unit: tests
+	@echo "Running unit tests (excluding integration tests)..."
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests "~[integration]"
+
+.PHONY: test-parsing
+test-parsing: tests
+	@echo "Running parsing tests..."
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests "[parsing]"
+
+.PHONY: test-openai
+test-openai: tests
+	@echo "Running OpenAI tests (excluding integration)..."
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests "[openai] and ~[integration]"
+
+.PHONY: test-integration
+test-integration: tests
+	@echo "Running integration tests..."
+	@./$(BUILD_DIR)/tests/llmcpp_tests "[integration]"
+
+.PHONY: test-ci
+test-ci: tests
+	@echo "Running CI-safe tests (excluding integration tests)..."
+	@cd $(BUILD_DIR) && ./tests/llmcpp_tests "~[integration]"
 
 # Code quality targets
 .PHONY: format

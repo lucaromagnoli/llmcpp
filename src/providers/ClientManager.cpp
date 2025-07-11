@@ -3,23 +3,23 @@
 #include <algorithm>
 #include <mutex>
 
-bool ClientManager::addClient(const std::string& name, std::unique_ptr<LLMClient> client) {
+bool ClientManager::addClient(const std::string& name, std::shared_ptr<LLMClient> client) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (clients_.find(name) != clients_.end()) {
         return false;  // Client with this name already exists
     }
 
-    clients_[name] = std::move(client);
+    clients_[name] = client;
     return true;
 }
 
-LLMClient* ClientManager::getClient(const std::string& name) const {
+std::shared_ptr<LLMClient> ClientManager::getClient(const std::string& name) const {
     std::lock_guard<std::mutex> lock(mutex_);
 
     auto it = clients_.find(name);
     if (it != clients_.end()) {
-        return it->second.get();
+        return it->second;
     }
 
     return nullptr;
