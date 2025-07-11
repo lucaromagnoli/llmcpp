@@ -50,8 +50,14 @@ debug:
 	@$(MAKE) build BUILD_TYPE=Debug
 
 .PHONY: tests
-tests: CMAKE_ARGS += -DLLMCPP_BUILD_TESTS=ON
-tests: build
+tests: configure-tests
+	@echo "Building tests..."
+	@cmake --build $(BUILD_DIR)
+
+.PHONY: configure-tests
+configure-tests: $(BUILD_DIR)
+	@echo "Configuring build system with tests..."
+	@cmake -B $(BUILD_DIR) $(CMAKE_ARGS) -DLLMCPP_BUILD_TESTS=ON
 
 # Configuration targets
 .PHONY: configure
