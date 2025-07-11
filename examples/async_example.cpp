@@ -28,7 +28,7 @@ int main() {
         config.client = "openai";
         config.model = "gpt-4o-mini";
         config.maxTokens = 50;
-        config.randomness = 0.7f;
+        config.temperature = 0.7f;
 
         // Create request
         LLMRequest request(config, "What's the weather like today?");

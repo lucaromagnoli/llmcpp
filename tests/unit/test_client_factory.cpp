@@ -6,6 +6,7 @@
 #include "core/ClientManager.h"
 #include "core/LLMTypes.h"
 #include "openai/OpenAIClient.h"
+#include "openai/OpenAISchemaBuilder.h"
 
 TEST_CASE("ClientFactory provider registration", "[client][factory]") {
     // Test that we can create a client factory
@@ -126,12 +127,12 @@ TEST_CASE("ClientFactory provider configuration", "[client][factory][config]") {
             LLMRequestConfig config;
             config.client = "openai";
             config.model = "gpt-4o";
-            config.randomness = 0.7f;
+            config.temperature = 0.7f;
             config.maxTokens = 150;
 
             LLMRequest request(config, "Test with custom config");
 
-            REQUIRE(request.config.randomness == Catch::Approx(0.7f));
+            REQUIRE(request.config.temperature == Catch::Approx(0.7f));
             REQUIRE(request.config.maxTokens == 150);
         }
     }
@@ -221,13 +222,19 @@ TEST_CASE("Integration: Factory and Manager", "[client][integration]") {
             config.client = "openai";
             config.model = "gpt-4o";
             config.functionName = "test_function";
-            config.jsonSchema =
-                R"({"type": "object", "properties": {"result": {"type": "string"}}})";
+            // Use OpenAI schema builder instead of raw JSON
+            auto schema = OpenAIResponsesSchemaBuilder("test_function")
+                              .property("result", JsonSchemaBuilder::string())
+                              .required({"result"})
+                              .buildSchema();
+            config.schemaObject = schema;
 
             LLMRequest request(config, "End-to-end test");
 
             REQUIRE(request.config.functionName == "test_function");
-            REQUIRE(request.config.jsonSchema.find("object") != std::string::npos);
+            REQUIRE(request.config.schemaObject.has_value());
+            REQUIRE(request.config.schemaObject->contains("type"));
+            REQUIRE(request.config.schemaObject->at("type") == "object");
             REQUIRE(request.prompt == "End-to-end test");
         }
     }
@@ -293,12 +300,18 @@ TEST_CASE("Provider-specific features", "[client][providers]") {
 
             // Test Responses API
             config.functionName = "extract_data";
-            config.jsonSchema = R"({"type": "object", "properties": {"data": {"type": "string"}}})";
+            // Use OpenAI schema builder for data extraction
+            auto schema = OpenAIResponsesSchemaBuilder("extract_data")
+                              .property("data", JsonSchemaBuilder::string())
+                              .required({"data"})
+                              .buildSchema();
+            config.schemaObject = schema;
 
             LLMRequest responsesRequest(config, "Extract data from text");
 
             REQUIRE(responsesRequest.config.functionName == "extract_data");
-            REQUIRE(responsesRequest.config.jsonSchema.find("data") != std::string::npos);
+            REQUIRE(responsesRequest.config.schemaObject.has_value());
+            REQUIRE(responsesRequest.config.schemaObject->at("properties").contains("data"));
 
             // Test Chat Completions API
             config.functionName = "";

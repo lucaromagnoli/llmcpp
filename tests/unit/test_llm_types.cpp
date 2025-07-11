@@ -7,12 +7,12 @@ TEST_CASE("LLMRequestConfig basic functionality", "[llm][types]") {
     LLMRequestConfig config;
     config.client = "openai";
     config.model = "gpt-4o";
-    config.randomness = 0.7f;
+    config.temperature = 0.7f;
     config.maxTokens = 150;
 
     REQUIRE(config.client == "openai");
     REQUIRE(config.model == "gpt-4o");
-    REQUIRE(config.randomness == Catch::Approx(0.7f));
+    REQUIRE(config.temperature == Catch::Approx(0.7f));
     REQUIRE(config.maxTokens == 150);
 
     // Test toString method
@@ -157,7 +157,7 @@ TEST_CASE("Complex LLMRequest with all fields", "[llm][types]") {
     config.model = "gpt-4o";
     config.functionName = "analyze_data";
     config.jsonSchema = R"({"type": "object", "properties": {"result": {"type": "string"}}})";
-    config.randomness = 0.8f;
+    config.temperature = 0.8f;
     config.maxTokens = 500;
 
     LLMInput inputValues = {"data1", "data2", "data3"};

@@ -10,28 +10,98 @@ using json = nlohmann::json;
 // Input type using standard C++ vectors instead of JUCE StringArray
 using LLMInput = std::vector<std::string>;
 
+/**
+ * @brief Common schema names for structured outputs
+ *
+ * Provides type-safe schema naming to prevent typos and improve maintainability.
+ * These correspond to common use cases in AI applications.
+ */
+enum class ResponsesSchemaName {
+    SentimentAnalysis,  // sentiment_analysis
+    DataExtraction,     // data_extraction
+    Classification,     // classification
+    EntityExtraction,   // entity_extraction
+    ContentAnalysis,    // content_analysis
+    DocumentAnalysis,   // document_analysis
+    ReviewAnalysis,     // review_analysis
+    WeatherInfo,        // weather_info
+    ProductInfo,        // product_info
+    UserProfile,        // user_profile
+    ImageAnalysis,      // image_analysis
+    TextSummary,        // text_summary
+    Translation,        // translation
+    MathSolution,       // math_solution
+    CodeAnalysis,       // code_analysis
+    Custom              // For user-defined schema names
+};
+
+/**
+ * @brief Convert ResponsesSchemaName enum to string
+ */
+inline std::string toString(ResponsesSchemaName schemaName) {
+    switch (schemaName) {
+        case ResponsesSchemaName::SentimentAnalysis:
+            return "sentiment_analysis";
+        case ResponsesSchemaName::DataExtraction:
+            return "data_extraction";
+        case ResponsesSchemaName::Classification:
+            return "classification";
+        case ResponsesSchemaName::EntityExtraction:
+            return "entity_extraction";
+        case ResponsesSchemaName::ContentAnalysis:
+            return "content_analysis";
+        case ResponsesSchemaName::DocumentAnalysis:
+            return "document_analysis";
+        case ResponsesSchemaName::ReviewAnalysis:
+            return "review_analysis";
+        case ResponsesSchemaName::WeatherInfo:
+            return "weather_info";
+        case ResponsesSchemaName::ProductInfo:
+            return "product_info";
+        case ResponsesSchemaName::UserProfile:
+            return "user_profile";
+        case ResponsesSchemaName::ImageAnalysis:
+            return "image_analysis";
+        case ResponsesSchemaName::TextSummary:
+            return "text_summary";
+        case ResponsesSchemaName::Translation:
+            return "translation";
+        case ResponsesSchemaName::MathSolution:
+            return "math_solution";
+        case ResponsesSchemaName::CodeAnalysis:
+            return "code_analysis";
+        case ResponsesSchemaName::Custom:
+            return "custom_schema";
+    }
+    return "unknown_schema";
+}
+
 /// Represents the configuration for the LLM
 struct LLMRequestConfig {
     std::string client;
     std::string model;
     std::string functionName = "llm_function";  // Default function name for LLM calls
     std::string jsonSchema;
+    std::optional<json> schemaObject;  // Structured schema data
 
-    float randomness = 0.8f;
+    float temperature = 0.8f;
     int maxTokens = 200;
 
     // Add more configuration options as needed (e.g., top_p, stop sequences, etc.)
 
     std::string toString() const {
+        std::string schemaStr = schemaObject.has_value() ? schemaObject->dump() : jsonSchema;
         return "LLMRequestConfig { client: " + client + ", model: " + model +
-               ", functionName: " + functionName + ", jsonSchema: " + jsonSchema +
-               ", randomness: " + std::to_string(randomness) +
+               ", functionName: " + functionName + ", schema: " + schemaStr +
+               ", temperature: " + std::to_string(temperature) +
                ", maxTokens: " + std::to_string(maxTokens) + " }";
     }
 };
 
 struct LLMRequest {
     LLMRequest() = delete;
+
+    // Constructor with prompt only
     LLMRequest(LLMRequestConfig config, std::string prompt, LLMInput inputValues = {},
                std::string previousResponseId = "")
         : config(std::move(config)),
@@ -39,10 +109,39 @@ struct LLMRequest {
           inputValues(std::move(inputValues)),
           previousResponseId(std::move(previousResponseId)) {}
 
+    // Constructor with single context message (convenience)
+    LLMRequest(LLMRequestConfig config, std::string prompt, std::string contextMessage,
+               LLMInput inputValues = {}, std::string previousResponseId = "")
+        : config(std::move(config)),
+          prompt(std::move(prompt)),
+          contextData(std::move(contextMessage)),
+          inputValues(std::move(inputValues)),
+          previousResponseId(std::move(previousResponseId)) {}
+
+    // Constructor with structured context (provider-specific)
+    LLMRequest(LLMRequestConfig config, std::string prompt, json contextData,
+               LLMInput inputValues = {}, std::string previousResponseId = "")
+        : config(std::move(config)),
+          prompt(std::move(prompt)),
+          contextData(std::move(contextData)),
+          inputValues(std::move(inputValues)),
+          previousResponseId(std::move(previousResponseId)) {}
+
     LLMRequestConfig config;
-    std::string prompt;
-    LLMInput inputValues;
-    std::string previousResponseId;  // For native OpenAI conversation management
+    std::string prompt;              // The main task/prompt (what to do)
+    json contextData;                // Context data (provider-specific format)
+    LLMInput inputValues;            // Template variables for substitution
+    std::string previousResponseId;  // For conversation continuity
+
+    // Utility methods
+    std::string instructions() const { return prompt; }  // For OpenAI mapping
+    std::string context() const {
+        // Return context as string if it's a string, empty otherwise
+        if (contextData.is_string()) {
+            return contextData.get<std::string>();
+        }
+        return "";
+    }
 
     std::string toString() const {
         std::string inputValuesString;
@@ -51,9 +150,11 @@ struct LLMRequest {
             inputValuesString += inputValues[i];
         }
 
+        std::string contextString = contextData.dump();
+
         return "LLMRequest {\n config: " + config.toString() + ",\n prompt: " + prompt +
-               ",\n inputValues: [" + inputValuesString + "]" +
-               ",\n previousResponseId: " + previousResponseId + "\n}";
+               ",\n contextData: " + contextString + ",\n inputValues: [" + inputValuesString +
+               "]" + ",\n previousResponseId: " + previousResponseId + "\n}";
     }
 };
 
