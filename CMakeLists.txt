@@ -50,6 +50,9 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/yhirose/cpp-httplib.git
     GIT_TAG v0.15.3
 )
+
+# Configure httplib to use OpenSSL
+set(HTTPLIB_USE_OPENSSL ON)
 FetchContent_MakeAvailable(httplib)
 
 # Source files

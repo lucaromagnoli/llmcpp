@@ -32,6 +32,7 @@ class OpenAIHttpClient::HttpClientImpl {
             basePath_ = "/v1";
         }
 
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
         client_ = std::make_unique<httplib::SSLClient>(hostname_);
 
         // Configure client
@@ -41,9 +42,14 @@ class OpenAIHttpClient::HttpClientImpl {
 
         // Enable SSL verification
         client_->enable_server_certificate_verification(true);
+#else
+        throw std::runtime_error(
+            "SSL support not available. Please ensure OpenSSL is properly linked.");
+#endif
     }
 
     OpenAIHttpClient::HttpResponse post(const std::string& endpoint, const json& requestBody) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
         auto headers = buildHeaders();
         auto url = buildUrl(endpoint);
         auto bodyStr = requestBody.dump();
@@ -51,30 +57,51 @@ class OpenAIHttpClient::HttpClientImpl {
         auto result = client_->Post(url, headers, bodyStr, "application/json");
 
         return processResponse(result);
+#else
+        OpenAIHttpClient::HttpResponse response;
+        response.success = false;
+        response.statusCode = 0;
+        response.errorMessage = "SSL support not available";
+        return response;
+#endif
     }
 
     OpenAIHttpClient::HttpResponse get(const std::string& endpoint) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
         auto headers = buildHeaders();
         auto url = buildUrl(endpoint);
 
         auto result = client_->Get(url, headers);
 
         return processResponse(result);
+#else
+        OpenAIHttpClient::HttpResponse response;
+        response.success = false;
+        response.statusCode = 0;
+        response.errorMessage = "SSL support not available";
+        return response;
+#endif
     }
 
     void setConfig(const OpenAI::OpenAIConfig& config) {
         config_ = config;
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
         // Update client timeouts
         client_->set_connection_timeout(config_.timeoutSeconds);
         client_->set_read_timeout(config_.timeoutSeconds);
         client_->set_write_timeout(config_.timeoutSeconds);
+#endif
     }
 
     OpenAI::OpenAIConfig getConfig() const { return config_; }
 
    private:
     OpenAI::OpenAIConfig config_;
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     std::unique_ptr<httplib::SSLClient> client_;
+#else
+    std::unique_ptr<void> client_;  // Placeholder when SSL not available
+#endif
     std::string hostname_;
     std::string basePath_;
 
