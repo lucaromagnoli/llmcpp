@@ -195,6 +195,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         
         print("✅ Changelog updated successfully!")
     
+    def generate_release_notes(self, prev_tag: str, current_tag: str) -> str:
+        """Generate release notes for GitHub release"""
+        commits = self.get_commits_since_tag(prev_tag)
+        if not commits:
+            return "No changes in this release."
+        
+        categories = self.categorize_commits(commits)
+        
+        # Generate release notes format
+        release_notes = "## 🚀 What's Changed\n\n"
+        
+        # Add sections with content
+        for category, entries in categories.items():
+            if entries:
+                release_notes += f"### {category}\n"
+                for entry in entries:
+                    release_notes += f"- {entry}\n"
+                release_notes += "\n"
+        
+        # Add full changelog link
+        release_notes += f"**Full Changelog**: https://github.com/lucaromagnoli/llmcpp/compare/{prev_tag}...{current_tag}\n"
+        
+        return release_notes
+    
     def show_version(self) -> None:
         """Show current version"""
         version = self.get_current_version()
@@ -205,10 +229,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         print("""Usage: python scripts/update-changelog.py [command]
 
 Commands:
-  update  - Update changelog with new commits (default)
-  init    - Initialize changelog file
-  version - Show current version
-  help    - Show this help message
+  update         - Update changelog with new commits (default)
+  init           - Initialize changelog file
+  release-notes  - Generate release notes for GitHub release
+  version        - Show current version
+  help           - Show this help message
+
+Examples:
+  python scripts/update-changelog.py update
+  python scripts/update-changelog.py release-notes v1.0.3 v1.0.4
 """)
 
 
@@ -224,6 +253,14 @@ def main():
             generator.update_changelog()
         else:
             print("⚠️  Changelog already exists. Use 'update' to add new entries.")
+    elif command == "release-notes":
+        if len(sys.argv) < 4:
+            print("❌ Usage: python scripts/update-changelog.py release-notes <prev_tag> <current_tag>")
+            sys.exit(1)
+        prev_tag = sys.argv[2]
+        current_tag = sys.argv[3]
+        release_notes = generator.generate_release_notes(prev_tag, current_tag)
+        print(release_notes)
     elif command == "version":
         generator.show_version()
     elif command in ["help", "-h", "--help"]:
