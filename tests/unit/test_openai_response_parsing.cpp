@@ -6,10 +6,19 @@
 
 // Helper to load the sample response
 json loadSampleResponse() {
-    std::ifstream file("openai_response_sample.json");
+    // Try multiple possible paths for different environments
+    std::ifstream file("tests/openai_response_sample.json");
     if (!file.is_open()) {
-        // Try from project root if not found
-        file.open("../openai_response_sample.json");
+        file.open("openai_response_sample.json");
+    }
+    if (!file.is_open()) {
+        file.open("../tests/openai_response_sample.json");
+    }
+    if (!file.is_open()) {
+        file.open("../../tests/openai_response_sample.json");
+    }
+    if (!file.is_open()) {
+        file.open("../../../tests/openai_response_sample.json");
     }
     REQUIRE(file.is_open());
 

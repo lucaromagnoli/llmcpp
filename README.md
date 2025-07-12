@@ -309,6 +309,10 @@ bool supportsStructured = OpenAI::supportsStructuredOutputs(OpenAI::Model::GPT_4
 
 ### Structured Outputs
 
+The library provides two ways to define JSON schemas for structured outputs:
+
+#### Method 1: Manual JSON Schema (Basic)
+
 ```cpp
 // Define JSON schema for structured output
 json schema = {
@@ -333,6 +337,97 @@ if (response.success) {
     std::cout << "Answer: " << result["answer"] << std::endl;
     std::cout << "Confidence: " << result["confidence"] << std::endl;
 }
+```
+
+#### Method 2: JsonSchemaBuilder (Recommended)
+
+The `JsonSchemaBuilder` provides a fluent, type-safe API for building JSON schemas:
+
+```cpp
+#include <llmcpp/core/JsonSchemaBuilder.h>
+
+// Build schema using fluent API
+auto schema = JsonSchemaBuilder()
+    .type("object")
+    .property("answer", JsonSchemaBuilder()
+        .type("string")
+        .description("The analysis result")
+        .required())
+    .property("confidence", JsonSchemaBuilder()
+        .type("number")
+        .minimum(0.0)
+        .maximum(1.0)
+        .description("Confidence score between 0 and 1")
+        .required())
+    .property("tags", JsonSchemaBuilder()
+        .type("array")
+        .items(JsonSchemaBuilder().type("string"))
+        .description("Optional tags for categorization"))
+    .build();
+
+LLMRequestConfig config;
+config.schemaObject = schema;
+config.functionName = "analyze_sentiment";
+
+LLMRequest request(config, "Analyze the sentiment of this text");
+auto response = client.sendRequest(request);
+```
+
+#### JsonSchemaBuilder Examples
+
+```cpp
+// Simple object with required fields
+auto userSchema = JsonSchemaBuilder()
+    .type("object")
+    .property("name", JsonSchemaBuilder().type("string").required())
+    .property("age", JsonSchemaBuilder().type("integer").minimum(0).required())
+    .property("email", JsonSchemaBuilder().type("string").format("email"))
+    .required({"name", "age"})
+    .build();
+
+// Array of objects
+auto productsSchema = JsonSchemaBuilder()
+    .type("array")
+    .items(JsonSchemaBuilder()
+        .type("object")
+        .property("id", JsonSchemaBuilder().type("string").required())
+        .property("name", JsonSchemaBuilder().type("string").required())
+        .property("price", JsonSchemaBuilder().type("number").minimum(0).required())
+        .required({"id", "name", "price"}))
+    .build();
+
+// Enum with specific values
+auto statusSchema = JsonSchemaBuilder()
+    .type("string")
+    .enumValues({"pending", "approved", "rejected"})
+    .description("Status of the request")
+    .build();
+
+// Conditional schema
+auto conditionalSchema = JsonSchemaBuilder()
+    .type("object")
+    .property("type", JsonSchemaBuilder().type("string").required())
+    .ifThen(
+        JsonSchemaBuilder().property("type", JsonSchemaBuilder().constValue("user")),
+        JsonSchemaBuilder().property("user_id", JsonSchemaBuilder().type("string").required())
+    )
+    .ifThen(
+        JsonSchemaBuilder().property("type", JsonSchemaBuilder().constValue("admin")),
+        JsonSchemaBuilder().property("admin_level", JsonSchemaBuilder().type("integer").minimum(1).required())
+    )
+    .required({"type"})
+    .build();
+```
+
+#### Utility Methods
+
+```cpp
+// Common patterns
+auto simpleString = JsonSchemaBuilder::string();
+auto requiredString = JsonSchemaBuilder::requiredString();
+auto optionalString = JsonSchemaBuilder::optionalString();
+auto stringArray = JsonSchemaBuilder::arrayOf(JsonSchemaBuilder::string());
+auto statusEnum = JsonSchemaBuilder::stringEnum({"active", "inactive", "pending"});
 ```
 
 ## Testing
