@@ -112,6 +112,33 @@ int main() {
 }
 ```
 
+## CMake Integration
+
+### After install (recommended)
+
+```cmake
+find_package(llmcpp REQUIRED PATHS /path/to/install/lib/cmake/llmcpp)
+target_link_libraries(my_target PRIVATE llmcpp::llmcpp)
+```
+
+- This will automatically add the correct include paths and link the library.
+- Make sure nlohmann_json is installed on your system (e.g., via Homebrew or vcpkg).
+
+### FetchContent/CPM (header-only or development)
+
+```cmake
+include(FetchContent)
+FetchContent_Declare(
+  llmcpp
+  GIT_REPOSITORY https://github.com/lucaromagnoli/llmcpp.git
+  GIT_TAG main
+)
+FetchContent_MakeAvailable(llmcpp)
+target_link_libraries(my_target PRIVATE llmcpp)
+```
+
+- This is convenient for development, but for production use, prefer the install method above.
+
 ## Architecture
 
 ### Core Components
