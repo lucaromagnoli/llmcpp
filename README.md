@@ -1,5 +1,12 @@
 # llmcpp
 
+[![CI](https://github.com/lucaromagnoli/llmcpp/actions/workflows/ci.yml/badge.svg)](https://github.com/lucaromagnoli/llmcpp/actions/workflows/ci.yml)
+[![Release](https://github.com/lucaromagnoli/llmcpp/actions/workflows/release.yml/badge.svg)](https://github.com/lucaromagnoli/llmcpp/actions/workflows/release.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://isocpp.org/std/the-standard)
+[![CMake](https://img.shields.io/badge/CMake-3.22%2B-green.svg)](https://cmake.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey.svg)](https://github.com/lucaromagnoli/llmcpp)
+
 A modern C++20 library providing a unified interface for Large Language Model APIs, with support for async operations and multiple providers.
 
 ## Features
