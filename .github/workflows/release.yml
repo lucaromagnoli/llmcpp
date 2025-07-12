@@ -43,19 +43,28 @@ jobs:
           fi
           echo "✅ Version format is valid: $VERSION"
 
-      - name: Check version matches CMakeLists.txt
+      - name: Check version is newer than current
         run: |
           VERSION="${{ steps.extract.outputs.version }}"
           CMAKE_VERSION=$(grep "project(llmcpp VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
 
-          if [[ "$VERSION" != "$CMAKE_VERSION" ]]; then
-            echo "❌ Version mismatch!"
+          echo "Tag version: $VERSION"
+          echo "CMake version: $CMAKE_VERSION"
+
+          # Extract base version (remove prerelease suffix for comparison)
+          BASE_VERSION=$(echo "$VERSION" | sed 's/-.*//')
+          BASE_CMAKE_VERSION=$(echo "$CMAKE_VERSION" | sed 's/-.*//')
+
+          # Compare versions
+          if [ "$(printf '%s\n' "$BASE_CMAKE_VERSION" "$BASE_VERSION" | sort -V | head -n1)" != "$BASE_CMAKE_VERSION" ]; then
+            echo "❌ Version validation failed!"
             echo "Tag version: $VERSION"
             echo "CMake version: $CMAKE_VERSION"
-            echo "Please update CMakeLists.txt to match the tag version"
+            echo "The release version must be newer than the current version in CMakeLists.txt"
+            echo "Use scripts/release.sh to properly bump the version before creating a release"
             exit 1
           fi
-          echo "✅ Version matches CMakeLists.txt: $VERSION"
+          echo "✅ Version validation passed: $VERSION is newer than $CMAKE_VERSION"
 
   build-and-test:
     needs: validate-version
