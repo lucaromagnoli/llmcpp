@@ -158,6 +158,11 @@ jobs:
         with:
           path: release-assets
 
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
       - name: Generate changelog
         id: changelog
         run: |
@@ -167,29 +172,67 @@ jobs:
 
           echo "Generating changelog from $PREV_TAG to $CURRENT_TAG"
 
-          # Generate changelog
-          {
-            echo "## 🚀 What's Changed"
-            echo ""
+          # Use our Python changelog script to generate a proper changelog
+          python scripts/update-changelog.py update
 
-            # Get commit messages between tags
-            if [ -n "$PREV_TAG" ]; then
-              git log --pretty=format:"- %s (%h)" "$PREV_TAG..$CURRENT_TAG" --no-merges
-            else
-              git log --pretty=format:"- %s (%h)" "$CURRENT_TAG" --no-merges
-            fi
+          # Read the generated changelog for the release
+          if [ -f "CHANGELOG.md" ]; then
+            # Extract the unreleased section for the release body
+            {
+              echo "## 🚀 What's Changed"
+              echo ""
 
-            echo ""
-            echo ""
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
-          } > CHANGELOG.md
+              # Extract content from the [Unreleased] section
+              sed -n '/## \[Unreleased\]/,/^## /p' CHANGELOG.md | sed '1d;$d' | sed '/^$/d'
 
-          # Set output for use in release
-          {
-            echo "changelog<<EOF"
-            cat CHANGELOG.md
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+              echo ""
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
+            } > RELEASE_CHANGELOG.md
+
+            # Set output for use in release
+            {
+              echo "changelog<<EOF"
+              cat RELEASE_CHANGELOG.md
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          else
+            # Fallback to basic changelog if our script fails
+            {
+              echo "## 🚀 What's Changed"
+              echo ""
+              if [ -n "$PREV_TAG" ]; then
+                git log --pretty=format:"- %s (%h)" "$PREV_TAG..$CURRENT_TAG" --no-merges
+              else
+                git log --pretty=format:"- %s (%h)" "$CURRENT_TAG" --no-merges
+              fi
+              echo ""
+              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
+            } > RELEASE_CHANGELOG.md
+
+            {
+              echo "changelog<<EOF"
+              cat RELEASE_CHANGELOG.md
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update CHANGELOG.md for release
+        run: |
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          # Replace [Unreleased] with the actual version and date
+          sed -i "s/## \[Unreleased\] - .*/## [$CURRENT_TAG] - $(date +%Y-%m-%d)/" CHANGELOG.md
+
+          # Add new [Unreleased] section at the top
+          sed -i '/^# Changelog/a\## [Unreleased] - Unreleased' CHANGELOG.md
+
+      - name: Commit changelog updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for ${{ github.ref_name }}" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
