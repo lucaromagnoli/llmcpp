@@ -251,7 +251,7 @@ void OpenAIHttpClient::removeDefaultHeader(const std::string& key) { defaultHead
 
 // Private helper methods
 std::unordered_map<std::string, std::string> OpenAIHttpClient::buildHeaders(
-    const json& requestBody) const {
+    const json& requestBody [[maybe_unused]]) const {
     std::unordered_map<std::string, std::string> headers;
     headers["Authorization"] = "Bearer " + config_.apiKey;
     headers["Content-Type"] = "application/json";
@@ -353,7 +353,10 @@ void OpenAIHttpClient::processStreamingData(const std::string& data,
     }
 }
 
-std::string OpenAIHttpClient::extractStreamingChunk(const std::string& line) const { return line; }
+std::string OpenAIHttpClient::extractStreamingChunk(const std::string& line
+                                                    [[maybe_unused]]) const {
+    return line;
+}
 
 void OpenAIHttpClient::validateConfig() const {
     if (config_.apiKey.empty()) {
