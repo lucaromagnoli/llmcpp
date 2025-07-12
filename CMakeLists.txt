@@ -32,7 +32,7 @@ endif()
 
 # Find dependencies
 find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json 3.11.0 REQUIRED)
+find_package(nlohmann_json 3.10.0 REQUIRED)
 
 # Use FetchContent for dependencies
 include(FetchContent)
