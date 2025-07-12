@@ -264,11 +264,26 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
 std::future<LLMResponse> OpenAIClient::routeRequestAsync(const LLMRequest& request,
                                                          LLMResponseCallback callback) {
     return std::async(std::launch::async, [this, request, callback]() {
-        auto response = routeRequest(request);
-        if (callback) {
-            callback(response);
+        try {
+            auto response = routeRequest(request);
+
+            // Call callback after the future is ready, not before
+            if (callback) {
+                callback(response);
+            }
+
+            return response;
+        } catch (const std::exception& e) {
+            LLMResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.errorMessage = e.what();
+
+            if (callback) {
+                callback(errorResponse);
+            }
+
+            return errorResponse;
         }
-        return response;
     });
 }
 
