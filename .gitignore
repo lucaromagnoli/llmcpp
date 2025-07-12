@@ -45,3 +45,12 @@ docs/build/
 .env
 .env.local
 .env.*.local
+
+# Sample files and responses (but allow in tests directory)
+*_sample.json
+!tests/*_sample.json
+*_sample.*
+!tests/*_sample.*
+sample_*
+!tests/sample_*
+response_samples/
