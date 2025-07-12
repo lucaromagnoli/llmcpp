@@ -17,7 +17,7 @@ class OpenAIChatCompletionsApi {
 };
 
 OpenAIClient::OpenAIClient(const std::string& apiKey)
-    : config_{apiKey, "https://api.openai.com/v1"} {
+    : config_{apiKey, "https://api.openai.com/v1", "", "", "gpt-4o-mini", 30, 3, true} {
     initializeApiHandlers();
 }
 
@@ -26,7 +26,8 @@ OpenAIClient::OpenAIClient(const OpenAI::OpenAIConfig& config) : config_(config)
 }
 
 OpenAIClient::OpenAIClient(const std::string& apiKey, OpenAI::Model defaultModel)
-    : config_{apiKey, "https://api.openai.com/v1"} {
+    : config_{apiKey, "https://api.openai.com/v1", "", "", modelToString(defaultModel), 30, 3,
+              true} {
     initializeApiHandlers();
     // Store default model in config for future use
     config_.defaultModel = modelToString(defaultModel);
@@ -44,13 +45,13 @@ OpenAIClient& OpenAIClient::operator=(OpenAIClient&& other) noexcept = default;
 
 // LLMClient interface implementation
 void OpenAIClient::sendRequest(const LLMRequest& request, LLMResponseCallback callback) {
-    auto future = routeRequestAsync(request, callback);
+    [[maybe_unused]] auto future = routeRequestAsync(request, callback);
     // Don't wait for the result in the async version - just fire and forget
 }
 
 void OpenAIClient::sendStreamingRequest(const LLMRequest& request, LLMResponseCallback onDone,
                                         LLMStreamCallback onChunk) {
-    auto future = routeStreamingRequest(request, onChunk, onDone);
+    [[maybe_unused]] auto future = routeStreamingRequest(request, onChunk, onDone);
     // Don't wait for the result in the async version - just fire and forget
 }
 
@@ -199,7 +200,7 @@ OpenAI::ResponsesResponse OpenAIClient::deleteResponse(const std::string& respon
 }
 
 OpenAI::ChatCompletionResponse OpenAIClient::sendChatCompletion(
-    const OpenAI::ChatCompletionRequest& request) {
+    const OpenAI::ChatCompletionRequest& request [[maybe_unused]]) {
     throw std::runtime_error("OpenAIClient::sendChatCompletion not yet implemented");
 }
 
@@ -264,11 +265,26 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
 std::future<LLMResponse> OpenAIClient::routeRequestAsync(const LLMRequest& request,
                                                          LLMResponseCallback callback) {
     return std::async(std::launch::async, [this, request, callback]() {
-        auto response = routeRequest(request);
-        if (callback) {
-            callback(response);
+        try {
+            auto response = routeRequest(request);
+
+            // Call callback after the future is ready, not before
+            if (callback) {
+                callback(response);
+            }
+
+            return response;
+        } catch (const std::exception& e) {
+            LLMResponse errorResponse;
+            errorResponse.success = false;
+            errorResponse.errorMessage = e.what();
+
+            if (callback) {
+                callback(errorResponse);
+            }
+
+            return errorResponse;
         }
-        return response;
     });
 }
 

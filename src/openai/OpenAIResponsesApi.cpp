@@ -78,8 +78,9 @@ std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createAsync(
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::createStreaming(
-    const OpenAI::ResponsesRequest& request, std::function<void(const std::string&)> streamCallback,
-    std::function<void(const OpenAI::ResponsesResponse&)> finalCallback) {
+    const OpenAI::ResponsesRequest& request [[maybe_unused]],
+    std::function<void(const std::string&)> streamCallback [[maybe_unused]],
+    std::function<void(const OpenAI::ResponsesResponse&)> finalCallback [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::createStreaming not yet implemented");
 }
 
@@ -113,54 +114,64 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::retrieve(const std::string& respon
     }
 }
 
-OpenAI::ResponsesResponse OpenAIResponsesApi::cancel(const std::string& responseId) {
+OpenAI::ResponsesResponse OpenAIResponsesApi::cancel(const std::string& responseId
+                                                     [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::cancel not yet implemented");
 }
 
-bool OpenAIResponsesApi::deleteResponse(const std::string& responseId) {
+bool OpenAIResponsesApi::deleteResponse(const std::string& responseId [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::deleteResponse not yet implemented");
 }
 
-json OpenAIResponsesApi::listInputItems(const std::string& responseId, const std::string& after,
-                                        int limit) {
+json OpenAIResponsesApi::listInputItems(const std::string& responseId [[maybe_unused]],
+                                        const std::string& after [[maybe_unused]],
+                                        int limit [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::listInputItems not yet implemented");
 }
 
-bool OpenAIResponsesApi::isProcessing(const std::string& responseId) {
+bool OpenAIResponsesApi::isProcessing(const std::string& responseId [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::isProcessing not yet implemented");
 }
 
-OpenAI::ResponsesResponse OpenAIResponsesApi::waitForCompletion(const std::string& responseId,
-                                                                int timeoutSeconds,
-                                                                int pollIntervalSeconds) {
+OpenAI::ResponsesResponse OpenAIResponsesApi::waitForCompletion(const std::string& responseId
+                                                                [[maybe_unused]],
+                                                                int timeoutSeconds [[maybe_unused]],
+                                                                int pollIntervalSeconds
+                                                                [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::waitForCompletion not yet implemented");
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::resumeStreaming(
-    const std::string& responseId, int startingAfter,
-    std::function<void(const std::string&)> streamCallback) {
+    const std::string& responseId [[maybe_unused]], int startingAfter [[maybe_unused]],
+    std::function<void(const std::string&)> streamCallback [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::resumeStreaming not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::continueConversation(
-    const std::string& previousResponseId, const OpenAI::ResponsesInput& newInput,
-    const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
+    const std::string& previousResponseId [[maybe_unused]],
+    const OpenAI::ResponsesInput& newInput [[maybe_unused]],
+    const std::optional<std::vector<OpenAI::ToolVariant>>& tools [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::continueConversation not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::forkConversation(
-    const std::string& forkFromResponseId, const OpenAI::ResponsesInput& newInput,
-    const std::optional<std::vector<OpenAI::ToolVariant>>& tools) {
+    const std::string& forkFromResponseId [[maybe_unused]],
+    const OpenAI::ResponsesInput& newInput [[maybe_unused]],
+    const std::optional<std::vector<OpenAI::ToolVariant>>& tools [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::forkConversation not yet implemented");
 }
 
-OpenAI::ResponsesResponse OpenAIResponsesApi::approveMcpRequest(
-    const std::string& responseId, const std::string& approvalRequestId, bool approve) {
+OpenAI::ResponsesResponse OpenAIResponsesApi::approveMcpRequest(const std::string& responseId
+                                                                [[maybe_unused]],
+                                                                const std::string& approvalRequestId
+                                                                [[maybe_unused]],
+                                                                bool approve [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::approveMcpRequest not yet implemented");
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::submitFunctionOutputs(
-    const std::string& responseId, const std::vector<OpenAI::FunctionCallOutput>& outputs) {
+    const std::string& responseId [[maybe_unused]],
+    const std::vector<OpenAI::FunctionCallOutput>& outputs [[maybe_unused]]) {
     throw std::runtime_error("OpenAIResponsesApi::submitFunctionOutputs not yet implemented");
 }
 
@@ -237,7 +248,7 @@ bool OpenAIResponsesApi::supportsBackgroundProcessing(const std::string& model) 
            model.find("o4") != std::string::npos;
 }
 
-bool OpenAIResponsesApi::supportsStreaming(const std::string& model) const {
+bool OpenAIResponsesApi::supportsStreaming(const std::string& model [[maybe_unused]]) const {
     // Most models support streaming
     return true;
 }
@@ -379,9 +390,11 @@ void OpenAIResponsesApi::extractConvenienceFields(OpenAI::ResponsesResponse& res
     }
 }
 
-OpenAI::ResponsesResponse OpenAIResponsesApi::pollForCompletion(const std::string& responseId,
-                                                                int maxAttempts,
-                                                                int intervalSeconds) {
+OpenAI::ResponsesResponse OpenAIResponsesApi::pollForCompletion(const std::string& responseId
+                                                                [[maybe_unused]],
+                                                                int maxAttempts [[maybe_unused]],
+                                                                int intervalSeconds
+                                                                [[maybe_unused]]) {
     // TODO: Implement polling
     throw std::runtime_error("OpenAIResponsesApi::pollForCompletion not yet implemented");
 }

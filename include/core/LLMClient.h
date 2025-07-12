@@ -22,6 +22,7 @@ class LLMClient {
     virtual void sendStreamingRequest(const LLMRequest& request, LLMResponseCallback onDone,
                                       LLMStreamCallback onChunk) {
         // Default implementation: just call regular sendRequest
+        (void)onChunk;
         sendRequest(request, std::move(onDone));
     }
 
