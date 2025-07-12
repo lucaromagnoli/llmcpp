@@ -2,7 +2,8 @@
   "name": "llmcpp",
   "version": "1.0.3",
   "dependencies": [
-    "openssl"
+    "openssl",
+    "nlohmann-json"
   ],
   "builtin-baseline": "f7423ee180c4b7f40d43402c2feb3859161ef625"
 }
