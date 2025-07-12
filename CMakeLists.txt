@@ -32,10 +32,16 @@ endif()
 
 # Find dependencies
 find_package(OpenSSL REQUIRED)
-find_package(nlohmann_json 3.10.0 REQUIRED)
 
 # Use FetchContent for dependencies
 include(FetchContent)
+
+# nlohmann-json
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
 
 # cpp-httplib  
 FetchContent_Declare(
@@ -46,7 +52,9 @@ FetchContent_Declare(
 
 # Configure httplib to use OpenSSL
 set(HTTPLIB_USE_OPENSSL ON)
-FetchContent_MakeAvailable(httplib)
+
+# Make dependencies available
+FetchContent_MakeAvailable(nlohmann_json httplib)
 
 # Source files
 set(LLMCPP_SOURCES
@@ -77,7 +85,7 @@ target_include_directories(llmcpp
 # Link libraries
 target_link_libraries(llmcpp 
     PUBLIC 
-        nlohmann_json::nlohmann_json
+        nlohmann_json
     PRIVATE
         httplib::httplib
         OpenSSL::SSL 
@@ -108,8 +116,8 @@ endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# Install the library
-install(TARGETS llmcpp
+# Install the library and its dependencies
+install(TARGETS llmcpp nlohmann_json
     EXPORT llmcppTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
