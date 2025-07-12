@@ -158,22 +158,15 @@ main() {
     validate_version "$new_version"
     print_info "New version: $new_version"
     
-    # Confirm with user
+    # Show what will happen
     echo ""
-    print_warning "This will:"
+    print_info "This will:"
     echo "  1. Update version in CMakeLists.txt and vcpkg.json"
     echo "  2. Create a git commit with the version changes"
     echo "  3. Create and push a git tag v$new_version"
     echo "  4. Push the current branch to origin"
     echo "  5. Trigger GitHub Actions to create a release (if on main branch)"
     echo ""
-    read -p "Continue? (y/N): " -n 1 -r
-    echo ""
-    
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        print_info "Release cancelled"
-        exit 0
-    fi
     
     # Update version in files
     update_version_in_files "$new_version"
