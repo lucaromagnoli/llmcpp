@@ -45,3 +45,9 @@ docs/build/
 .env
 .env.local
 .env.*.local
+
+# Sample files and responses
+*_sample.json
+*_sample.*
+sample_*
+response_samples/
