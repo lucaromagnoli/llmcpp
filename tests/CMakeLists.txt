@@ -21,6 +21,7 @@ set(UNIT_TEST_SOURCES
     unit/test_openai_client.cpp  # Re-enabling to check errors
     unit/test_openai_response_parsing.cpp
     unit/test_client_factory.cpp
+    unit/test_model_enum.cpp
 )
 
 # Integration test files
