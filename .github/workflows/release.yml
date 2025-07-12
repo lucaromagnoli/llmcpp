@@ -163,7 +163,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate changelog
+      - name: Generate changelog and release notes
         id: changelog
         run: |
           # Get the previous tag
@@ -172,49 +172,23 @@ jobs:
 
           echo "Generating changelog from $PREV_TAG to $CURRENT_TAG"
 
-          # Use our Python changelog script to generate a proper changelog
+          # Update the changelog file
           python scripts/update-changelog.py update
 
-          # Read the generated changelog for the release
-          if [ -f "CHANGELOG.md" ]; then
-            # Extract the unreleased section for the release body
-            {
-              echo "## 🚀 What's Changed"
-              echo ""
-
-              # Extract content from the [Unreleased] section
-              sed -n '/## \[Unreleased\]/,/^## /p' CHANGELOG.md | sed '1d;$d' | sed '/^$/d'
-
-              echo ""
-              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
-            } > RELEASE_CHANGELOG.md
-
-            # Set output for use in release
-            {
-              echo "changelog<<EOF"
-              cat RELEASE_CHANGELOG.md
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
+          # Generate release notes for GitHub
+          if [ -n "$PREV_TAG" ]; then
+            RELEASE_NOTES=$(python scripts/update-changelog.py release-notes "$PREV_TAG" "$CURRENT_TAG")
           else
-            # Fallback to basic changelog if our script fails
-            {
-              echo "## 🚀 What's Changed"
-              echo ""
-              if [ -n "$PREV_TAG" ]; then
-                git log --pretty=format:"- %s (%h)" "$PREV_TAG..$CURRENT_TAG" --no-merges
-              else
-                git log --pretty=format:"- %s (%h)" "$CURRENT_TAG" --no-merges
-              fi
-              echo ""
-              echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
-            } > RELEASE_CHANGELOG.md
-
-            {
-              echo "changelog<<EOF"
-              cat RELEASE_CHANGELOG.md
-              echo "EOF"
-            } >> $GITHUB_OUTPUT
+            # Fallback for first release
+            RELEASE_NOTES="## 🚀 Initial Release"$'\n\n'"This is the first release of llmcpp."$'\n\n'"**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/$CURRENT_TAG"
           fi
+
+          # Set output for use in release
+          {
+            echo "changelog<<EOF"
+            echo "$RELEASE_NOTES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Update CHANGELOG.md for release
         run: |
