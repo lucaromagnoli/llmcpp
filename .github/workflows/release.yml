@@ -43,14 +43,13 @@ jobs:
           fi
           echo "✅ Version format is valid: $VERSION"
 
-      - name: Check version matches CMakeLists.txt
+      - name: Display version info
         run: |
           VERSION="${{ steps.extract.outputs.version }}"
           CMAKE_VERSION=$(grep "project(llmcpp VERSION" CMakeLists.txt | sed 's/.*VERSION \([0-9.]*\).*/\1/')
 
           echo "Tag version: $VERSION"
           echo "CMake version: $CMAKE_VERSION"
-          echo "Note: Version validation disabled for testing - will be re-enabled later"
 
   build-and-test:
     needs: validate-version
