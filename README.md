@@ -12,6 +12,7 @@ A modern C++20 library providing a unified interface for Large Language Model AP
 - **🌐 Cross-platform**: Works on Linux, macOS, and Windows
 - **✅ Production ready**: Full OpenAI Responses API implementation
 - **📝 Flexible input**: Support for both simple prompts and structured context
+- **🎯 Type-safe models**: Strongly typed Model enum for compile-time safety
 
 ## Quick Start
 
@@ -24,16 +25,18 @@ int main() {
     // Create OpenAI client
     OpenAIClient client("your-api-key-here");
 
-    // Configure request
+    // Method 1: Using Model enum (recommended - type-safe)
+    auto response = client.sendRequest(OpenAI::Model::GPT_4o_Mini, "Hello! How are you?");
+
+    // Method 2: Using traditional config approach
     LLMRequestConfig config;
     config.client = "openai";
     config.model = "gpt-4o-mini";
     config.maxTokens = 100;
     config.temperature = 0.7f;
 
-    // Create and send request with prompt
     LLMRequest request(config, "Hello! How are you?");
-    auto response = client.sendRequest(request);
+    auto response2 = client.sendRequest(request);
 
     // Handle response
     if (response.success) {
@@ -50,22 +53,22 @@ int main() {
 ### Using Context and Instructions
 
 ```cpp
-// Create request with separate prompt (instructions) and context
+// Method 1: Using Model enum with context
+LLMContext context = {
+    {{"role", "user"}, {"content", "What is 2+2?"}}
+};
+
+std::string prompt = "You are a math assistant. Answer with just the number.";
+auto response = client.sendRequest(OpenAI::Model::GPT_4o_Mini, prompt, context, 200, 0.1f);
+
+// Method 2: Using traditional config approach
 LLMRequestConfig config;
 config.client = "openai";
 config.model = "gpt-4o-mini";
 config.maxTokens = 200;
 
-// Context data (will be mapped to OpenAI input)
-LLMContext context = {
-    {{"role", "user"}, {"content", "What is 2+2?"}}
-};
-
-// Prompt becomes instructions for the model
-std::string prompt = "You are a math assistant. Answer with just the number.";
-
 LLMRequest request(config, prompt, context);
-auto response = client.sendRequest(request);
+auto response2 = client.sendRequest(request);
 ```
 
 ### Async Usage
@@ -130,6 +133,8 @@ This design allows for:
 - Simple text completion with just a prompt
 - Structured conversations with context
 - Provider-specific optimizations while maintaining a unified interface
+- Type-safe model selection with IDE autocompletion
+- Compile-time validation of model names
 
 ### Supported APIs
 
@@ -236,13 +241,37 @@ config.temperature = 0.7f;         // Temperature (0.0 - 1.0)
 config.functionName = "my_func";  // Function name for structured outputs
 ```
 
-#### Recommended Models
+#### Available Models
 
-- **`gpt-4.1`**: Latest model with superior coding, instruction following, and structured outputs (1M context)
-- **`gpt-4.1-mini`**: Balanced performance and cost, beats gpt-4o in many benchmarks
-- **`gpt-4.1-nano`**: Fastest and cheapest option for simple tasks like classification
-- **`gpt-4o-mini`**: Cost-effective for basic text completion tasks
-- **`gpt-4o`**: Good balance of performance and cost for general use
+The library provides type-safe model selection using the `OpenAI::Model` enum:
+
+```cpp
+// Available model enums
+OpenAI::Model::GPT_4_1        // gpt-4.1 - Latest model with superior coding and structured outputs
+OpenAI::Model::GPT_4_1_Mini   // gpt-4.1-mini - Balanced performance and cost
+OpenAI::Model::GPT_4_1_Nano   // gpt-4.1-nano - Fastest and cheapest option
+OpenAI::Model::GPT_4o         // gpt-4o - Good balance of performance and cost
+OpenAI::Model::GPT_4o_Mini    // gpt-4o-mini - Cost-effective for basic tasks
+OpenAI::Model::GPT_4_5        // gpt-4.5 - Preview model (deprecated July 2025)
+OpenAI::Model::GPT_3_5_Turbo  // gpt-3.5-turbo - Legacy model
+OpenAI::Model::Custom         // For custom model names
+```
+
+#### Model Selection Helpers
+
+```cpp
+// Get recommended model for specific use cases
+auto codingModel = OpenAIClient::getRecommendedModelEnum("coding");           // GPT_4_1
+auto costEffectiveModel = OpenAIClient::getRecommendedModelEnum("cost_effective"); // GPT_4_1_Mini
+auto fastestModel = OpenAIClient::getRecommendedModelEnum("fastest");         // GPT_4_1_Nano
+
+// Convert between enum and string
+std::string modelStr = OpenAIClient::modelToString(OpenAI::Model::GPT_4o_Mini); // "gpt-4o-mini"
+OpenAI::Model model = OpenAIClient::stringToModel("gpt-4.1");                   // GPT_4_1
+
+// Check if model supports features
+bool supportsStructured = OpenAI::supportsStructuredOutputs(OpenAI::Model::GPT_4_1); // true
+```
 
 ### Structured Outputs
 
