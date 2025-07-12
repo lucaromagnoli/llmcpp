@@ -36,13 +36,12 @@ find_package(OpenSSL REQUIRED)
 # Use FetchContent for dependencies
 include(FetchContent)
 
-# nlohmann/json
+# nlohmann-json
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG v3.11.3
 )
-FetchContent_MakeAvailable(nlohmann_json)
 
 # cpp-httplib  
 FetchContent_Declare(
@@ -53,7 +52,9 @@ FetchContent_Declare(
 
 # Configure httplib to use OpenSSL
 set(HTTPLIB_USE_OPENSSL ON)
-FetchContent_MakeAvailable(httplib)
+
+# Make dependencies available
+FetchContent_MakeAvailable(nlohmann_json httplib)
 
 # Source files
 set(LLMCPP_SOURCES
@@ -84,7 +85,7 @@ target_include_directories(llmcpp
 # Link libraries
 target_link_libraries(llmcpp 
     PUBLIC 
-        nlohmann_json::nlohmann_json
+        nlohmann_json
     PRIVATE
         httplib::httplib
         OpenSSL::SSL 
@@ -113,9 +114,11 @@ endif()
 
 # Installation
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-# Install the library
-install(TARGETS llmcpp
+# Install the library and its dependencies
+install(TARGETS llmcpp nlohmann_json
+    EXPORT llmcppTargets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
@@ -130,6 +133,32 @@ install(DIRECTORY include/
 # Install generated version header
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/include/llmcpp_version.h"
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+)
+
+# Export the targets to a script
+install(EXPORT llmcppTargets
+    FILE llmcppTargets.cmake
+    NAMESPACE llmcpp::
+    DESTINATION lib/cmake/llmcpp
+)
+
+# Generate and install the config and version files
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/llmcppConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/llmcppConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/llmcppConfig.cmake"
+    INSTALL_DESTINATION lib/cmake/llmcpp
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/llmcppConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/llmcppConfigVersion.cmake"
+    DESTINATION lib/cmake/llmcpp
 )
 
 # CPack configuration for releases

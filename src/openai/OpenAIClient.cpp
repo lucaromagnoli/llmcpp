@@ -25,6 +25,13 @@ OpenAIClient::OpenAIClient(const OpenAI::OpenAIConfig& config) : config_(config)
     initializeApiHandlers();
 }
 
+OpenAIClient::OpenAIClient(const std::string& apiKey, OpenAI::Model defaultModel)
+    : config_{apiKey, "https://api.openai.com/v1"} {
+    initializeApiHandlers();
+    // Store default model in config for future use
+    config_.defaultModel = modelToString(defaultModel);
+}
+
 // Destructor implementation - can handle unique_ptr destruction here
 // because complete types are available (either from includes or stubs above)
 OpenAIClient::~OpenAIClient() = default;
@@ -73,6 +80,34 @@ std::future<LLMResponse> OpenAIClient::sendStreamingRequestAsync(
     return routeStreamingRequest(request, streamCallback, finalCallback);
 }
 
+// Convenience methods with Model enum
+LLMResponse OpenAIClient::sendRequest(OpenAI::Model model, const std::string& prompt,
+                                      LLMContext context, int maxTokens, float temperature) {
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = modelToString(model);
+    config.maxTokens = maxTokens;
+    config.temperature = temperature;
+
+    LLMRequest request(config, prompt, context);
+    return sendRequest(request);
+}
+
+std::future<LLMResponse> OpenAIClient::sendRequestAsync(OpenAI::Model model,
+                                                        const std::string& prompt,
+                                                        LLMResponseCallback callback,
+                                                        LLMContext context, int maxTokens,
+                                                        float temperature) {
+    LLMRequestConfig config;
+    config.client = "openai";
+    config.model = modelToString(model);
+    config.maxTokens = maxTokens;
+    config.temperature = temperature;
+
+    LLMRequest request(config, prompt, context);
+    return sendRequestAsync(request, callback);
+}
+
 // Configuration methods
 void OpenAIClient::setApiKey(const std::string& apiKey) { config_.apiKey = apiKey; }
 
@@ -83,6 +118,10 @@ bool OpenAIClient::isConfigured() const { return !config_.apiKey.empty(); }
 bool OpenAIClient::isModelSupported(const std::string& modelName) const {
     auto models = getAvailableModels();
     return std::find(models.begin(), models.end(), modelName) != models.end();
+}
+
+bool OpenAIClient::isModelSupported(OpenAI::Model model) const {
+    return isModelSupported(modelToString(model));
 }
 
 void OpenAIClient::setClientConfig(const json& config) {
@@ -135,6 +174,28 @@ std::future<OpenAI::ResponsesResponse> OpenAIClient::sendResponsesRequestAsync(
     }
 
     return responsesApi_->createAsync(request, callback);
+}
+
+OpenAI::ResponsesResponse OpenAIClient::retrieveResponse(const std::string& responseId) {
+    if (!responsesApi_) {
+        throw std::runtime_error("Responses API not initialized");
+    }
+    return responsesApi_->retrieve(responseId);
+}
+
+OpenAI::ResponsesResponse OpenAIClient::cancelResponse(const std::string& responseId) {
+    if (!responsesApi_) {
+        throw std::runtime_error("Responses API not initialized");
+    }
+    return responsesApi_->cancel(responseId);
+}
+
+OpenAI::ResponsesResponse OpenAIClient::deleteResponse(const std::string& responseId) {
+    if (!responsesApi_) {
+        throw std::runtime_error("Responses API not initialized");
+    }
+    responsesApi_->deleteResponse(responseId);
+    return OpenAI::ResponsesResponse{};  // Return empty response for delete
 }
 
 OpenAI::ChatCompletionResponse OpenAIClient::sendChatCompletion(
@@ -196,20 +257,6 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
         LLMResponse errorResponse;
         errorResponse.success = false;
         errorResponse.errorMessage = e.what();
-
-        // Try to preserve any error details in the result
-        try {
-            // Check if the error message contains JSON
-            std::string errorMsg = e.what();
-            if (errorMsg.find("{") != std::string::npos) {
-                auto start = errorMsg.find("{");
-                auto jsonPart = errorMsg.substr(start);
-                errorResponse.result = json::parse(jsonPart);
-            }
-        } catch (...) {
-            // If JSON parsing fails, just keep the error message
-        }
-
         return errorResponse;
     }
 }
@@ -257,4 +304,21 @@ std::future<LLMResponse> OpenAIClient::routeStreamingRequest(const LLMRequest& r
             return errorResponse;
         }
     });
+}
+
+// Model enum helpers
+std::string OpenAIClient::modelToString(OpenAI::Model model) { return OpenAI::toString(model); }
+
+OpenAI::Model OpenAIClient::stringToModel(const std::string& modelStr) {
+    return OpenAI::modelFromString(modelStr);
+}
+
+std::vector<OpenAI::Model> OpenAIClient::getAvailableModelEnums() {
+    return {OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini, OpenAI::Model::GPT_4_1_Nano,
+            OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,  OpenAI::Model::GPT_4_5,
+            OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
+}
+
+OpenAI::Model OpenAIClient::getRecommendedModelEnum(const std::string& useCase) {
+    return OpenAI::getRecommendedModel(useCase);
 }

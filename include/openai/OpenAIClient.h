@@ -14,22 +14,28 @@ class OpenAIChatCompletionsApi;
 class OpenAIHttpClient;
 
 /**
- * OpenAI client implementation supporting Responses and Chat Completions APIs
+ * OpenAI client implementation
+ * Supports both Responses API (modern) and Chat Completions API (traditional)
  */
 class OpenAIClient : public LLMClient {
    public:
-    explicit OpenAIClient(const std::string& apiKey = "");
-    explicit OpenAIClient(const OpenAI::OpenAIConfig& config);
+    /**
+     * Constructors
+     */
+    OpenAIClient(const std::string& apiKey);
+    OpenAIClient(const OpenAI::OpenAIConfig& config);
 
-    // Destructor MUST be declared in header for Pimpl idiom
-    // Implementation goes in .cpp where complete types are available
-    ~OpenAIClient();
+    // Convenience constructor with Model enum
+    OpenAIClient(const std::string& apiKey, OpenAI::Model defaultModel);
 
-    // Move constructor and assignment (Rule of 5 for Pimpl)
+    // Destructor
+    ~OpenAIClient() override;
+
+    // Move semantics
     OpenAIClient(OpenAIClient&& other) noexcept;
     OpenAIClient& operator=(OpenAIClient&& other) noexcept;
 
-    // Delete copy operations (unique ownership)
+    // Delete copy constructor and assignment
     OpenAIClient(const OpenAIClient&) = delete;
     OpenAIClient& operator=(const OpenAIClient&) = delete;
 
@@ -54,12 +60,23 @@ class OpenAIClient : public LLMClient {
                                                        LLMResponseCallback finalCallback = nullptr);
 
     /**
+     * Convenience methods with Model enum
+     */
+    LLMResponse sendRequest(OpenAI::Model model, const std::string& prompt, LLMContext context = {},
+                            int maxTokens = 200, float temperature = 0.7f);
+    std::future<LLMResponse> sendRequestAsync(OpenAI::Model model, const std::string& prompt,
+                                              LLMResponseCallback callback = nullptr,
+                                              LLMContext context = {}, int maxTokens = 200,
+                                              float temperature = 0.7f);
+
+    /**
      * Configuration methods
      */
     void setApiKey(const std::string& apiKey);
     std::string getApiKey() const;
     bool isConfigured() const;
     bool isModelSupported(const std::string& modelName) const;
+    bool isModelSupported(OpenAI::Model model) const;
     void setClientConfig(const json& config);
     json getClientConfig() const;
 
@@ -108,6 +125,12 @@ class OpenAIClient : public LLMClient {
     // Model migration helpers
     std::string getRecommendedModel(const std::string& currentModel) const;
     std::vector<std::string> getModelsForApiType(OpenAI::ApiType apiType) const;
+
+    // Model enum helpers
+    static std::string modelToString(OpenAI::Model model);
+    static OpenAI::Model stringToModel(const std::string& modelStr);
+    static std::vector<OpenAI::Model> getAvailableModelEnums();
+    static OpenAI::Model getRecommendedModelEnum(const std::string& useCase);
 
    private:
     /**

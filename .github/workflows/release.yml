@@ -61,15 +61,15 @@ jobs:
     needs: validate-version
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]  # Temporarily disabled windows-latest due to vcpkg issues
+        os: [ubuntu-latest, macos-latest, windows-latest]
         build_type: [Release]
         include:
           - os: ubuntu-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
           - os: macos-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
-          # - os: windows-latest
-          #   cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
+          - os: windows-latest
+            cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
 
     runs-on: ${{ matrix.os }}
 
@@ -82,27 +82,27 @@ jobs:
         with:
           cmake-version: ${{ env.CMAKE_VERSION }}
 
-      # - name: Setup vcpkg (Windows)
-      #   if: runner.os == 'Windows'
-      #   uses: lukka/run-vcpkg@v11
-      #   with:
-      #     vcpkgGitCommitId: 'a34c873a9717a888f58dc05268dea15592c2f0ff'
+      - name: Setup vcpkg (Windows)
+        if: runner.os == 'Windows'
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgJsonGlob: '**/vcpkg.json'
 
       - name: Install dependencies (Ubuntu)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libssl-dev
+          sudo apt-get install -y libssl-dev nlohmann-json3-dev
 
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
-          brew install openssl
+          brew install openssl nlohmann-json
 
-      # - name: Configure CMake (Windows)
-      #   if: runner.os == 'Windows'
-      #   run: |
-      #     cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 
       - name: Configure CMake (Non-Windows)
         if: runner.os != 'Windows'
@@ -125,12 +125,12 @@ jobs:
           cpack -G TGZ
           ls -la *.tar.gz
 
-      # - name: Package (Windows)
-      #   if: runner.os == 'Windows'
-      #   run: |
-      #     cd build
-      #     cpack -G ZIP
-      #     dir *.zip
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cd build
+          cpack -G ZIP
+          dir *.zip
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -138,7 +138,7 @@ jobs:
           name: llmcpp-${{ needs.validate-version.outputs.version }}-${{ runner.os }}
           path: |
             build/*.tar.gz
-            # build/*.zip  # Temporarily disabled Windows artifacts
+            build/*.zip
           retention-days: 30
 
   create-release:
@@ -158,7 +158,12 @@ jobs:
         with:
           path: release-assets
 
-      - name: Generate changelog
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Generate changelog and release notes
         id: changelog
         run: |
           # Get the previous tag
@@ -167,29 +172,41 @@ jobs:
 
           echo "Generating changelog from $PREV_TAG to $CURRENT_TAG"
 
-          # Generate changelog
-          {
-            echo "## 🚀 What's Changed"
-            echo ""
+          # Update the changelog file
+          python scripts/update-changelog.py update
 
-            # Get commit messages between tags
-            if [ -n "$PREV_TAG" ]; then
-              git log --pretty=format:"- %s (%h)" "$PREV_TAG..$CURRENT_TAG" --no-merges
-            else
-              git log --pretty=format:"- %s (%h)" "$CURRENT_TAG" --no-merges
-            fi
-
-            echo ""
-            echo ""
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$PREV_TAG...$CURRENT_TAG"
-          } > CHANGELOG.md
+          # Generate release notes for GitHub
+          if [ -n "$PREV_TAG" ]; then
+            RELEASE_NOTES=$(python scripts/update-changelog.py release-notes "$PREV_TAG" "$CURRENT_TAG")
+          else
+            # Fallback for first release
+            RELEASE_NOTES="## 🚀 Initial Release"$'\n\n'"This is the first release of llmcpp."$'\n\n'"**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/$CURRENT_TAG"
+          fi
 
           # Set output for use in release
           {
             echo "changelog<<EOF"
-            cat CHANGELOG.md
+            echo "$RELEASE_NOTES"
             echo "EOF"
           } >> $GITHUB_OUTPUT
+
+      - name: Update CHANGELOG.md for release
+        run: |
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          # Replace [Unreleased] with the actual version and date
+          sed -i "s/## \[Unreleased\] - .*/## [$CURRENT_TAG] - $(date +%Y-%m-%d)/" CHANGELOG.md
+
+          # Add new [Unreleased] section at the top
+          sed -i '/^# Changelog/a\## [Unreleased] - Unreleased' CHANGELOG.md
+
+      - name: Commit changelog updates
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add CHANGELOG.md
+          git commit -m "docs: update changelog for ${{ github.ref_name }}" || echo "No changes to commit"
+          git push origin ${{ github.ref_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -211,7 +228,7 @@ jobs:
           echo "### 📦 Assets:" >> $GITHUB_STEP_SUMMARY
           echo "- Linux (Ubuntu) build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- macOS build artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- ⚠️ Windows build artifacts (temporarily disabled due to vcpkg issues)" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY

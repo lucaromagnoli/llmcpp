@@ -33,6 +33,8 @@ help:
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  clean          - Clean build directory"
+	@echo "  changelog      - Update changelog with new commits"
+	@echo "  changelog-init - Initialize changelog file"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make debug test          - Build in debug mode and run tests"
@@ -113,6 +115,17 @@ format:
 clean:
 	@echo "Cleaning build directory..."
 	@rm -rf $(BUILD_DIR)
+
+# Changelog targets
+.PHONY: changelog
+changelog:
+	@echo "Updating changelog..."
+	@python scripts/update-changelog.py update
+
+.PHONY: changelog-init
+changelog-init:
+	@echo "Initializing changelog..."
+	@python scripts/update-changelog.py init
 
 # Prevent intermediate files from being deleted
 .PRECIOUS: $(BUILD_DIR)/.created 

@@ -884,6 +884,7 @@ struct OpenAIConfig {
     std::string baseUrl = "https://api.openai.com/v1";
     std::string organization;
     std::string project;
+    std::string defaultModel = "gpt-4o-mini";  // Default model for convenience
     int timeoutSeconds = 30;
     int maxRetries = 3;
     bool enableDeprecationWarnings = true;
