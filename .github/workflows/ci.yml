@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:  # Skip CI for documentation changes
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'LICENSE'
   pull_request:
     branches: [ main, develop ]
+    paths-ignore:  # Skip CI for documentation changes
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - 'LICENSE'
 
 jobs:
   build-and-test:
@@ -12,7 +22,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-latest, windows-latest]
+        # Remove macOS from regular CI to save costs - it's 10x more expensive
+        # macOS builds will only run on releases
+        os: [ubuntu-22.04, windows-latest]
         build_type: [Release]
 
     steps:
@@ -31,7 +43,7 @@ jobs:
         restore-keys: |
           vcpkg-${{ matrix.os }}-
 
-    # Cache CMake build directory
+    # Cache CMake build directory - improved caching strategy
     - name: Cache CMake build
       uses: actions/cache@v4
       with:
@@ -39,21 +51,11 @@ jobs:
           build
           !build/tests/llmcpp_tests
           !build/examples
-        key: cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt') }}
+        key: cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', 'src/**/*', 'include/**/*') }}
         restore-keys: |
           cmake-${{ matrix.os }}-${{ matrix.build_type }}-
 
     # Cache package manager dependencies
-    - name: Cache Homebrew (macOS)
-      if: matrix.os == 'macos-latest'
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/Library/Caches/Homebrew
-          /opt/homebrew/Cellar
-        key: homebrew-${{ hashFiles('.github/workflows/ci.yml') }}
-        restore-keys: homebrew-
-
     - name: Cache apt packages (Linux)
       if: matrix.os == 'ubuntu-22.04'
       uses: actions/cache@v4
@@ -63,11 +65,6 @@ jobs:
           /var/lib/apt
         key: apt-${{ hashFiles('.github/workflows/ci.yml') }}
         restore-keys: apt-
-
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install cmake ninja nlohmann-json
 
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-22.04'
@@ -102,8 +99,8 @@ jobs:
       run: |
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
 
-    - name: Configure CMake (Non-Windows)
-      if: matrix.os != 'windows-latest'
+    - name: Configure CMake (Linux)
+      if: matrix.os == 'ubuntu-22.04'
       run: |
         cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DLLMCPP_BUILD_TESTS=ON
 
