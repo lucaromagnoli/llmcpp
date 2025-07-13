@@ -1054,11 +1054,12 @@ inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& reque
     }
     responsesReq.toolChoice =
         ToolChoiceMode::Auto;  // Explicitly initialize to fix cppcheck warning
-    if (request.config.maxTokens > 0) {
-        responsesReq.maxOutputTokens = request.config.maxTokens;
+    if (request.config.maxTokens.has_value() && *request.config.maxTokens > 0) {
+        responsesReq.maxOutputTokens = *request.config.maxTokens;
     }
-    if (request.config.temperature >= 0.0f) {
-        responsesReq.temperature = static_cast<double>(request.config.temperature);
+    // Only set temperature if it's provided and valid
+    if (request.config.temperature.has_value() && *request.config.temperature >= 0.0f) {
+        responsesReq.temperature = static_cast<double>(*request.config.temperature);
     }
     if (!request.previousResponseId.empty()) {
         responsesReq.previousResponseID = request.previousResponseId;
@@ -1303,11 +1304,12 @@ inline ChatCompletionRequest ChatCompletionRequest::fromLLMRequest(const LLMRequ
         chatReq.messages.push_back(userMsg);
     }
 
-    if (request.config.maxTokens > 0) {
-        chatReq.maxTokens = request.config.maxTokens;
+    if (request.config.maxTokens.has_value() && *request.config.maxTokens > 0) {
+        chatReq.maxTokens = *request.config.maxTokens;
     }
-    if (request.config.temperature >= 0.0f) {
-        chatReq.temperature = static_cast<double>(request.config.temperature);
+    // Only set temperature if it's provided and valid
+    if (request.config.temperature.has_value() && *request.config.temperature >= 0.0f) {
+        chatReq.temperature = static_cast<double>(*request.config.temperature);
     }
 
     return chatReq;

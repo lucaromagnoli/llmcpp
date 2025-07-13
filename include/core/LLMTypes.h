@@ -18,8 +18,8 @@ struct LLMRequestConfig {
     std::string jsonSchema;
     std::optional<json> schemaObject;  // Structured schema data
 
-    float temperature = 0.8f;
-    int maxTokens = 200;
+    std::optional<float> temperature;  // Optional temperature (filtered by model support)
+    std::optional<int> maxTokens;      // Optional max tokens
 
     // Convenience method for any model name
     void setModel(const std::string& modelName) { model = modelName; }
@@ -30,10 +30,11 @@ struct LLMRequestConfig {
 
     std::string toString() const {
         std::string schemaStr = schemaObject.has_value() ? schemaObject->dump() : jsonSchema;
+        std::string tempStr = temperature.has_value() ? std::to_string(*temperature) : "not set";
         return "LLMRequestConfig { client: " + client + ", model: " + getModelString() +
                ", functionName: " + functionName + ", schema: " + schemaStr +
-               ", temperature: " + std::to_string(temperature) +
-               ", maxTokens: " + std::to_string(maxTokens) + " }";
+               ", temperature: " + tempStr +
+               ", maxTokens: " + std::to_string(maxTokens.has_value() ? *maxTokens : 0) + " }";
     }
 };
 

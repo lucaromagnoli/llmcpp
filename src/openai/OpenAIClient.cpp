@@ -83,27 +83,34 @@ std::future<LLMResponse> OpenAIClient::sendStreamingRequestAsync(
 
 // Convenience methods with Model enum
 LLMResponse OpenAIClient::sendRequest(OpenAI::Model model, const std::string& prompt,
-                                      LLMContext context, int maxTokens, float temperature) {
+                                      LLMContext context, std::optional<int> maxTokens,
+                                      std::optional<float> temperature) {
     LLMRequestConfig config;
     config.client = "openai";
     config.model = modelToString(model);
-    config.maxTokens = maxTokens;
-    config.temperature = temperature;
+    if (maxTokens.has_value()) {
+        config.maxTokens = *maxTokens;
+    }
+    if (temperature.has_value()) {
+        config.temperature = *temperature;
+    }
 
     LLMRequest request(config, prompt, context);
     return sendRequest(request);
 }
 
-std::future<LLMResponse> OpenAIClient::sendRequestAsync(OpenAI::Model model,
-                                                        const std::string& prompt,
-                                                        LLMResponseCallback callback,
-                                                        LLMContext context, int maxTokens,
-                                                        float temperature) {
+std::future<LLMResponse> OpenAIClient::sendRequestAsync(
+    OpenAI::Model model, const std::string& prompt, LLMResponseCallback callback,
+    LLMContext context, std::optional<int> maxTokens, std::optional<float> temperature) {
     LLMRequestConfig config;
     config.client = "openai";
     config.model = modelToString(model);
-    config.maxTokens = maxTokens;
-    config.temperature = temperature;
+    if (maxTokens.has_value()) {
+        config.maxTokens = *maxTokens;
+    }
+    if (temperature.has_value()) {
+        config.temperature = *temperature;
+    }
 
     LLMRequest request(config, prompt, context);
     return sendRequestAsync(request, callback);

@@ -510,3 +510,74 @@ TEST_CASE("OpenAI::JSON roundtrip consistency", "[openai][types]") {
     REQUIRE(originalConfig.organization == deserializedConfig.organization);
     REQUIRE(originalConfig.timeoutSeconds == deserializedConfig.timeoutSeconds);
 }
+
+TEST_CASE("ResponsesRequest parameter filtering for reasoning models",
+          "[openai][types][filtering]") {
+    SECTION("O3 model should filter out temperature") {
+        OpenAI::ResponsesRequest request;
+        request.model = "o3";
+        request.temperature = 0.8;
+        request.maxOutputTokens = 100;
+
+        json requestJson = request.toJson();
+
+        // Temperature should be filtered out for reasoning models
+        REQUIRE(!requestJson.contains("temperature"));
+        REQUIRE(requestJson.contains("max_output_tokens"));
+        REQUIRE(requestJson["max_output_tokens"] == 100);
+    }
+
+    SECTION("O3-mini model should filter out temperature") {
+        OpenAI::ResponsesRequest request;
+        request.model = "o3-mini";
+        request.temperature = 0.5;
+        request.maxOutputTokens = 50;
+
+        json requestJson = request.toJson();
+
+        // Temperature should be filtered out for reasoning models
+        REQUIRE(!requestJson.contains("temperature"));
+        REQUIRE(requestJson.contains("max_output_tokens"));
+        REQUIRE(requestJson["max_output_tokens"] == 50);
+    }
+
+    SECTION("GPT-4o model should allow temperature") {
+        OpenAI::ResponsesRequest request;
+        request.model = "gpt-4o";
+        request.temperature = 0.7;
+        request.maxOutputTokens = 200;
+
+        json requestJson = request.toJson();
+
+        // Temperature should be included for non-reasoning models
+        REQUIRE(requestJson.contains("temperature"));
+        REQUIRE(requestJson["temperature"] == 0.7);
+        REQUIRE(requestJson.contains("max_output_tokens"));
+        REQUIRE(requestJson["max_output_tokens"] == 200);
+    }
+
+    SECTION("Parameter support checking") {
+        OpenAI::ResponsesRequest o3Request;
+        o3Request.model = "o3";
+
+        OpenAI::ResponsesRequest gpt4Request;
+        gpt4Request.model = "gpt-4o";
+
+        // O3 should not support temperature
+        REQUIRE(!o3Request.isParameterSupported("temperature"));
+        REQUIRE(!o3Request.isParameterSupported("top_p"));
+        REQUIRE(!o3Request.isParameterSupported("top_logprobs"));
+        REQUIRE(!o3Request.isParameterSupported("truncation"));
+
+        // O3 should support other parameters
+        REQUIRE(o3Request.isParameterSupported("max_output_tokens"));
+        REQUIRE(o3Request.isParameterSupported("instructions"));
+        REQUIRE(o3Request.isParameterSupported("stream"));
+
+        // GPT-4o should support all parameters
+        REQUIRE(gpt4Request.isParameterSupported("temperature"));
+        REQUIRE(gpt4Request.isParameterSupported("top_p"));
+        REQUIRE(gpt4Request.isParameterSupported("max_output_tokens"));
+        REQUIRE(gpt4Request.isParameterSupported("instructions"));
+    }
+}
