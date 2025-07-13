@@ -228,18 +228,54 @@ jobs:
         run: |
           VERSION="${{ needs.validate-version.outputs.version }}"
 
+          echo "Looking for version $VERSION in changelog..."
+
+          # Debug: show what we're looking for
+          echo "Searching for pattern: ## [$VERSION]"
+
           # Extract release notes from CHANGELOG.md
           if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "Found version $VERSION in changelog, extracting content..."
+
             # Get the content between the version header and the next version or end
+            # Use a more robust awk script that handles the format better
             RELEASE_NOTES=$(awk -v version="$VERSION" '
-              /^## \[' version '\]/ { in_version=1; next }
-              /^## \[/ && in_version { exit }
-              in_version { print }
-            ' CHANGELOG.md | sed '1d')  # Remove the first line (date)
+              BEGIN { in_version = 0; content = "" }
+              /^## \[' version '\]/ {
+                in_version = 1
+                next
+              }
+              /^## \[/ && in_version {
+                exit
+              }
+              in_version && /^###/ {
+                content = content "\n" $0
+              }
+              in_version && /^[[:space:]]*-/ {
+                content = content "\n" $0
+              }
+              in_version && /^[[:space:]]*$/ && content != "" {
+                content = content "\n"
+              }
+              END {
+                if (content != "") {
+                  print content
+                } else {
+                  print "No detailed changes found for this version."
+                }
+              }
+            ' CHANGELOG.md)
+
+            # Clean up the content
+            RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed '/^[[:space:]]*$/d' | head -20)
 
             # Add header
             RELEASE_NOTES="## 🚀 What's Changed\n\n$RELEASE_NOTES"
+
+            echo "Extracted release notes:"
+            echo "$RELEASE_NOTES"
           else
+            echo "Version $VERSION not found in changelog, using fallback..."
             # Fallback if changelog section not found
             RELEASE_NOTES="## 🚀 Release $VERSION\n\nThis release includes various improvements and bug fixes.\n\n**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
           fi
