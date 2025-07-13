@@ -4,6 +4,17 @@
 
 
 
+## [1.0.10] - 2025-07-13
+
+### Other
+- Merge pull request #27 from lucaromagnoli/feat/release_process
+
+
+
+## [Unreleased] - Unreleased
+
+
+
 ## [1.0.9] - 2025-07-13
 
 ### Added
