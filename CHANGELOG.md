@@ -4,6 +4,14 @@
 
 
 
+## [1.0.12] - 2025-07-13
+
+### Added
+- use Python script for robust release notes extraction
+
+### Fixed
+- resolve awk syntax error in release notes generation
+
 ## [1.0.11] - 2025-07-13
 
 ### Fixed
