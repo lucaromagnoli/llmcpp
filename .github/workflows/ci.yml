@@ -3,8 +3,6 @@ name: CI
 on:
   push:
     branches: [ main, develop ]
-    tags-ignore:
-      - 'v*.*.*'
     paths-ignore:  # Skip CI for documentation changes
       - '**.md'
       - 'docs/**'
@@ -20,7 +18,7 @@ on:
 
 jobs:
   build-and-test:
-    if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+    if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/')
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
