@@ -71,6 +71,32 @@ update_version_in_files() {
     print_success "Updated version in project files"
 }
 
+update_changelog() {
+    local new_version="$1"
+    
+    print_info "Updating changelog for version $new_version..."
+    
+    # Run the changelog update script
+    if [ -f "$PROJECT_DIR/scripts/update-changelog.py" ]; then
+        cd "$PROJECT_DIR"
+        
+        # First, update with new commits
+        python3 scripts/update-changelog.py update
+        
+        # Then replace [Unreleased] with the actual version
+        python3 scripts/update-changelog.py replace "$new_version"
+        
+        # Check if changelog was updated
+        if git diff --quiet CHANGELOG.md; then
+            print_warning "No changes detected in changelog"
+        else
+            print_success "Changelog updated successfully"
+        fi
+    else
+        print_warning "Changelog update script not found, skipping changelog update"
+    fi
+}
+
 validate_version() {
     local version="$1"
     if ! [[ $version =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
@@ -162,19 +188,23 @@ main() {
     echo ""
     print_info "This will:"
     echo "  1. Update version in CMakeLists.txt and vcpkg.json"
-    echo "  2. Create a git commit with the version changes"
-    echo "  3. Create and push a git tag v$new_version"
-    echo "  4. Push the current branch to origin"
-    echo "  5. Trigger GitHub Actions to create a release (if on main branch)"
+    echo "  2. Update CHANGELOG.md with new commits since last release"
+    echo "  3. Create a git commit with all version and changelog changes"
+    echo "  4. Create and push a git tag v$new_version"
+    echo "  5. Push the current branch to origin"
+    echo "  6. Trigger GitHub Actions to create a release (if on main branch)"
     echo ""
     
     # Update version in files
     update_version_in_files "$new_version"
     
-    # Create git commit
-    print_info "Creating git commit..."
-    git add CMakeLists.txt vcpkg.json
-    git commit -m "chore: bump version to $new_version"
+    # Update changelog
+    update_changelog "$new_version"
+    
+    # Create git commit with all changes
+    print_info "Creating git commit with version and changelog changes..."
+    git add CMakeLists.txt vcpkg.json CHANGELOG.md
+    git commit -m "chore: bump version to $new_version and update changelog"
     
     # Create and push tag
     print_info "Creating and pushing tag v$new_version..."
