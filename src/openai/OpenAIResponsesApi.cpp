@@ -26,6 +26,8 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
         auto httpResponse = httpClient_->post(url, requestJson);
 
         if (!httpResponse.success) {
+            std::cerr << "❌ HTTP request failed! Status: " << httpResponse.statusCode << std::endl;
+            std::cerr << "❌ HTTP response body: " << httpResponse.body << std::endl;
             throw std::runtime_error("HTTP request failed: " + httpResponse.errorMessage);
         }
 
@@ -47,8 +49,10 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
         return response;
 
     } catch (const json::exception& e) {
+        std::cerr << "❌ JSON parsing error: " << e.what() << std::endl;
         throw std::runtime_error("JSON parsing error: " + std::string(e.what()));
     } catch (const std::exception& e) {
+        std::cerr << "❌ Exception: " << e.what() << std::endl;
         throw std::runtime_error("API call failed: " + std::string(e.what()));
     }
 }
