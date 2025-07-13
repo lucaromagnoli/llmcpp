@@ -164,22 +164,52 @@ class ChangelogGenerator:
         
         # Update or create changelog file
         if Path(self.changelog_file).exists():
-            # Insert new content after header
+            # Read existing content
             with open(self.changelog_file, 'r') as f:
                 lines = f.readlines()
             
-            # Find where to insert (after header)
-            insert_pos = 0
-            for i, line in enumerate(lines):
-                if line.startswith('# Changelog'):
-                    insert_pos = i + 1
-                    break
+            # Check if [Unreleased] section already exists
+            unreleased_exists = any('## [Unreleased]' in line for line in lines)
             
-            # Insert new content
-            new_lines = lines[:insert_pos] + ['\n'] + [new_content] + ['\n'] + lines[insert_pos:]
-            
-            with open(self.changelog_file, 'w') as f:
-                f.writelines(new_lines)
+            if unreleased_exists:
+                # Find and replace the existing [Unreleased] section
+                new_lines = []
+                in_unreleased = False
+                skip_until_next_section = False
+                
+                for line in lines:
+                    if line.startswith('## [Unreleased]'):
+                        in_unreleased = True
+                        skip_until_next_section = True
+                        # Replace with new content
+                        new_lines.append(new_content)
+                        continue
+                    
+                    if in_unreleased and line.startswith('## ['):
+                        in_unreleased = False
+                        skip_until_next_section = False
+                        new_lines.append(line)
+                        continue
+                    
+                    if not skip_until_next_section:
+                        new_lines.append(line)
+                
+                # Write back the updated content
+                with open(self.changelog_file, 'w') as f:
+                    f.writelines(new_lines)
+            else:
+                # Insert new content after header
+                insert_pos = 0
+                for i, line in enumerate(lines):
+                    if line.startswith('# Changelog'):
+                        insert_pos = i + 1
+                        break
+                
+                # Insert new content
+                new_lines = lines[:insert_pos] + ['\n'] + [new_content] + ['\n'] + lines[insert_pos:]
+                
+                with open(self.changelog_file, 'w') as f:
+                    f.writelines(new_lines)
         else:
             # Create new changelog file
             header = """# Changelog
