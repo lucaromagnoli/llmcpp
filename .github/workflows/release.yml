@@ -237,34 +237,30 @@ jobs:
           if grep -q "## \[$VERSION\]" CHANGELOG.md; then
             echo "Found version $VERSION in changelog, extracting content..."
 
-            # Get the content between the version header and the next version or end
-            # Use a more robust awk script that handles the format better
-            RELEASE_NOTES=$(awk -v version="$VERSION" '
-              BEGIN { in_version = 0; content = "" }
-              /^## \[' version '\]/ {
-                in_version = 1
-                next
-              }
-              /^## \[/ && in_version {
-                exit
-              }
-              in_version && /^###/ {
-                content = content "\n" $0
-              }
-              in_version && /^[[:space:]]*-/ {
-                content = content "\n" $0
-              }
-              in_version && /^[[:space:]]*$/ && content != "" {
-                content = content "\n"
-              }
-              END {
-                if (content != "") {
-                  print content
-                } else {
-                  print "No detailed changes found for this version."
+            # Use sed to extract content between version header and next version
+            RELEASE_NOTES=$(sed -n "/^## \[$VERSION\]/,/^## \[/p" CHANGELOG.md | sed '1d;$d' | sed '/^$/d')
+
+            # If no content found, try a different approach
+            if [ -z "$RELEASE_NOTES" ]; then
+              echo "No content found with sed, trying alternative extraction..."
+              RELEASE_NOTES=$(awk -v version="$VERSION" '
+                BEGIN { in_version = 0; content = "" }
+                $0 ~ "^## \\[" version "\\]" { in_version = 1; next }
+                /^## \[/ && in_version { exit }
+                in_version {
+                  if ($0 ~ /^###/ || $0 ~ /^[[:space:]]*-/) {
+                    content = content "\n" $0
+                  }
                 }
-              }
-            ' CHANGELOG.md)
+                END {
+                  if (content != "") {
+                    print content
+                  } else {
+                    print "No detailed changes found for this version."
+                  }
+                }
+              ' CHANGELOG.md)
+            fi
 
             # Clean up the content
             RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed '/^[[:space:]]*$/d' | head -20)
