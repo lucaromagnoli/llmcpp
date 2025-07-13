@@ -3,6 +3,8 @@ name: CI
 on:
   push:
     branches: [ main, develop ]
+    tags-ignore:
+      - 'v*.*.*'
     paths-ignore:  # Skip CI for documentation changes
       - '**.md'
       - 'docs/**'
