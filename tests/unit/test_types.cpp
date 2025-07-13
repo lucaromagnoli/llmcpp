@@ -10,7 +10,7 @@ TEST_CASE("LLMRequestConfig construction") {
     REQUIRE(config.model.empty());
     REQUIRE(config.functionName == "llm_function");
     REQUIRE(config.jsonSchema.empty());
-    REQUIRE(config.temperature == 0.8f);
+    REQUIRE(!config.temperature.has_value());  // Temperature is now optional
     REQUIRE(config.maxTokens == 200);
 }
 
