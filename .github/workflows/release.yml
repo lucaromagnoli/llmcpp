@@ -83,12 +83,10 @@ jobs:
     needs: validate-version
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest]
         build_type: [Release]
         include:
           - os: ubuntu-latest
-            cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
-          - os: macos-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
           - os: windows-latest
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
@@ -124,17 +122,6 @@ jobs:
           restore-keys: |
             release-vcpkg-${{ matrix.os }}-
 
-      # Cache Homebrew (macOS) - only for releases
-      - name: Cache Homebrew (macOS)
-        if: matrix.os == 'macos-latest'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/Library/Caches/Homebrew
-            /opt/homebrew/Cellar
-          key: release-homebrew-${{ hashFiles('.github/workflows/release.yml') }}
-          restore-keys: release-homebrew-
-
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1.14
         with:
@@ -151,11 +138,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libssl-dev nlohmann-json3-dev
-
-      - name: Install dependencies (macOS)
-        if: runner.os == 'macOS'
-        run: |
-          brew install openssl nlohmann-json
 
       - name: Configure CMake (Windows)
         if: runner.os == 'Windows'
@@ -226,66 +208,10 @@ jobs:
       - name: Generate release notes from changelog
         id: changelog
         run: |
-          VERSION="${{ needs.validate-version.outputs.version }}"
-
-          echo "Looking for version $VERSION in changelog..."
-
-          # Debug: show what we're looking for
-          echo "Searching for pattern: ## [$VERSION]"
-
-          # Extract release notes from CHANGELOG.md
-          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
-            echo "Found version $VERSION in changelog, extracting content..."
-
-            # Get the content between the version header and the next version or end
-            # Use a more robust awk script that handles the format better
-            RELEASE_NOTES=$(awk -v version="$VERSION" '
-              BEGIN { in_version = 0; content = "" }
-              /^## \[' version '\]/ {
-                in_version = 1
-                next
-              }
-              /^## \[/ && in_version {
-                exit
-              }
-              in_version && /^###/ {
-                content = content "\n" $0
-              }
-              in_version && /^[[:space:]]*-/ {
-                content = content "\n" $0
-              }
-              in_version && /^[[:space:]]*$/ && content != "" {
-                content = content "\n"
-              }
-              END {
-                if (content != "") {
-                  print content
-                } else {
-                  print "No detailed changes found for this version."
-                }
-              }
-            ' CHANGELOG.md)
-
-            # Clean up the content
-            RELEASE_NOTES=$(echo "$RELEASE_NOTES" | sed '/^[[:space:]]*$/d' | head -20)
-
-            # Add header
-            RELEASE_NOTES="## 🚀 What's Changed\n\n$RELEASE_NOTES"
-
-            echo "Extracted release notes:"
-            echo "$RELEASE_NOTES"
-          else
-            echo "Version $VERSION not found in changelog, using fallback..."
-            # Fallback if changelog section not found
-            RELEASE_NOTES="## 🚀 Release $VERSION\n\nThis release includes various improvements and bug fixes.\n\n**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
-          fi
-
-          # Set output for use in release
-          {
-            echo "changelog<<EOF"
-            echo "$RELEASE_NOTES"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          python3 scripts/extract-release-notes.py "${{ needs.validate-version.outputs.version }}" > release_notes.txt
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat release_notes.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -306,7 +232,6 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 📦 Assets:" >> $GITHUB_STEP_SUMMARY
           echo "- Linux (Ubuntu) build artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- macOS build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "- Windows build artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
