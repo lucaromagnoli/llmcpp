@@ -4,6 +4,21 @@
 
 
 
+## [1.0.19] - 2025-07-13
+
+### Added
+- skip release build-and-test if CI has already passed for the commit
+
+### Fixed
+- simplify CI condition to prevent tag builds
+
+### Other
+- Merge pull request #30 from lucaromagnoli/feat/add-models
+- Remove o3 model integration test; only test o3-mini (no temperature or maxTokens)
+- Commit remaining changes: core, openai, and unit test updates for optional params and o3-mini logic
+- Fix maxTokens test: now optional instead of defaulting to 200
+- Bump version to 1.0.18 for patch release
+
 ## [1.0.17] - 2025-07-13
 
 ### Fixed
