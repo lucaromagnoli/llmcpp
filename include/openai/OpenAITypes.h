@@ -17,6 +17,20 @@ namespace OpenAI {
  * Provides type safety and IDE auto-completion for model selection
  */
 enum class Model {
+    // O3 series (Latest - 2025)
+    O3,       // o3 - Latest reasoning model
+    O3_Mini,  // o3-mini - Cost-effective reasoning model
+
+    // O1 series (2024-2025)
+    O1,          // o1 - Advanced reasoning model
+    O1_Mini,     // o1-mini - Cost-effective O1 model
+    O1_Preview,  // o1-preview - Preview version
+    O1_Pro,      // o1-pro - Professional version
+
+    // O4 series (Latest - 2025)
+    O4_Mini,                // o4-mini - Latest mini model
+    O4_Mini_Deep_Research,  // o4-mini-deep-research - Research focused
+
     // GPT-4.1 series (Latest - April 2025)
     GPT_4_1,  // gpt-4.1 - Latest model with superior coding, instruction following, and structured
               // outputs
@@ -27,8 +41,8 @@ enum class Model {
     GPT_4o,       // gpt-4o - Good balance of performance and cost
     GPT_4o_Mini,  // gpt-4o-mini - Cost-effective for basic tasks
 
-    // GPT-4.5 series (being deprecated)
-    GPT_4_5,  // gpt-4.5 - Preview model (deprecated July 2025)
+    // GPT-4.5 series (Latest - 2025)
+    GPT_4_5,  // gpt-4.5-preview - Latest preview model
 
     // GPT-3.5 series (legacy)
     GPT_3_5_Turbo,  // gpt-3.5-turbo - Legacy model
@@ -42,6 +56,22 @@ enum class Model {
  */
 inline std::string toString(Model model) {
     switch (model) {
+        case Model::O3:
+            return "o3";
+        case Model::O3_Mini:
+            return "o3-mini";
+        case Model::O1:
+            return "o1";
+        case Model::O1_Mini:
+            return "o1-mini";
+        case Model::O1_Preview:
+            return "o1-preview";
+        case Model::O1_Pro:
+            return "o1-pro";
+        case Model::O4_Mini:
+            return "o4-mini";
+        case Model::O4_Mini_Deep_Research:
+            return "o4-mini-deep-research";
         case Model::GPT_4_1:
             return "gpt-4.1";
         case Model::GPT_4_1_Mini:
@@ -53,7 +83,7 @@ inline std::string toString(Model model) {
         case Model::GPT_4o_Mini:
             return "gpt-4o-mini";
         case Model::GPT_4_5:
-            return "gpt-4.5";
+            return "gpt-4.5-preview";
         case Model::GPT_3_5_Turbo:
             return "gpt-3.5-turbo";
         case Model::Custom:
@@ -66,12 +96,20 @@ inline std::string toString(Model model) {
  * Convert API string to OpenAI Model enum
  */
 inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "o3") return Model::O3;
+    if (modelStr == "o3-mini") return Model::O3_Mini;
+    if (modelStr == "o1") return Model::O1;
+    if (modelStr == "o1-mini") return Model::O1_Mini;
+    if (modelStr == "o1-preview") return Model::O1_Preview;
+    if (modelStr == "o1-pro") return Model::O1_Pro;
+    if (modelStr == "o4-mini") return Model::O4_Mini;
+    if (modelStr == "o4-mini-deep-research") return Model::O4_Mini_Deep_Research;
     if (modelStr == "gpt-4.1") return Model::GPT_4_1;
     if (modelStr == "gpt-4.1-mini") return Model::GPT_4_1_Mini;
     if (modelStr == "gpt-4.1-nano") return Model::GPT_4_1_Nano;
     if (modelStr == "gpt-4o") return Model::GPT_4o;
     if (modelStr == "gpt-4o-mini") return Model::GPT_4o_Mini;
-    if (modelStr == "gpt-4.5") return Model::GPT_4_5;
+    if (modelStr == "gpt-4.5-preview") return Model::GPT_4_5;
     if (modelStr == "gpt-3.5-turbo") return Model::GPT_3_5_Turbo;
     return Model::Custom;
 }
@@ -81,6 +119,14 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline bool supportsStructuredOutputs(Model model) {
     switch (model) {
+        case Model::O3:
+        case Model::O3_Mini:
+        case Model::O1:
+        case Model::O1_Mini:
+        case Model::O1_Preview:
+        case Model::O1_Pro:
+        case Model::O4_Mini:
+        case Model::O4_Mini_Deep_Research:
         case Model::GPT_4_1:
         case Model::GPT_4_1_Mini:
         case Model::GPT_4_1_Nano:
@@ -93,22 +139,6 @@ inline bool supportsStructuredOutputs(Model model) {
             return false;
     }
     return false;
-}
-
-/**
- * Get recommended model for specific use cases
- */
-inline Model getRecommendedModel(const std::string& useCase) {
-    if (useCase == "coding" || useCase == "structured_output") {
-        return Model::GPT_4_1;
-    } else if (useCase == "cost_effective") {
-        return Model::GPT_4_1_Mini;
-    } else if (useCase == "fastest" || useCase == "classification") {
-        return Model::GPT_4_1_Nano;
-    } else if (useCase == "general") {
-        return Model::GPT_4o;
-    }
-    return Model::GPT_4_1_Mini;  // Default balanced choice
 }
 
 // OpenAI-specific simple message structure for convenience
@@ -595,44 +625,84 @@ struct ResponsesRequest {
     std::string model;
     std::optional<ResponsesInput> input;
 
-    // Optional configuration
+    // Optional configuration (all truly optional - can be omitted entirely)
     std::optional<std::vector<std::string>> include;  // What to include in response
     std::optional<std::string> instructions;          // System-level instructions
     std::optional<int> maxOutputTokens;
+    std::optional<int> maxToolCalls;  // Maximum number of tool calls
     std::optional<std::unordered_map<std::string, std::string>> metadata;
     std::optional<bool> parallelToolCalls;
     std::optional<std::string> previousResponseID;  // For conversation continuity
-    std::optional<bool> store;                      // Whether to store for retrieval
-    std::optional<bool> stream;                     // Enable streaming
-    std::optional<bool> background;                 // Background processing for long tasks
+    std::optional<std::string> prompt;              // Alternative to instructions
+    std::optional<json> reasoning;                  // Reasoning configuration
+    std::optional<std::string> serviceTier;  // "auto", "default", "flex", "scale", "priority"
+    std::optional<bool> store;               // Whether to store for retrieval
+    std::optional<bool> stream;              // Enable streaming
+    std::optional<bool> background;          // Background processing for long tasks
     std::optional<double> temperature;
     std::optional<TextOutputConfig> text;  // Output format configuration
     ToolChoiceMode toolChoice = ToolChoiceMode::Auto;
     std::optional<std::vector<ToolVariant>> tools;
+    std::optional<int> topLogprobs;  // Number of top logprobs to return
     std::optional<double> topP;
     std::optional<std::string> truncation;       // "auto" or "disabled"
     std::optional<std::string> user;             // User identifier
     std::optional<std::string> reasoningEffort;  // "low", "medium", "high" for reasoning models
 
+    /**
+     * Check if a parameter is supported for the current model
+     */
+    bool isParameterSupported(const std::string& paramName) const {
+        // Convert model string to enum for easier checking
+        auto modelEnum = modelFromString(model);
+
+        // Reasoning models (O-series) have different parameter support
+        if (modelEnum == Model::O3 || modelEnum == Model::O3_Mini || modelEnum == Model::O1 ||
+            modelEnum == Model::O1_Mini || modelEnum == Model::O1_Preview ||
+            modelEnum == Model::O1_Pro || modelEnum == Model::O4_Mini ||
+            modelEnum == Model::O4_Mini_Deep_Research) {
+            // Parameters NOT supported by reasoning models
+            if (paramName == "temperature" || paramName == "top_p" || paramName == "top_logprobs" ||
+                paramName == "truncation") {
+                return false;
+            }
+        }
+
+        // All other parameters are supported by all models
+        return true;
+    }
+
     json toJson() const {
         json j = {{"model", model}, {"tool_choice", toString(toolChoice)}};
+
+        // Only include parameters that are supported by the model
         if (input) j["input"] = input->toJson();
-        if (include) j["include"] = *include;
-        if (instructions) j["instructions"] = *instructions;
-        if (maxOutputTokens) j["max_output_tokens"] = *maxOutputTokens;
-        if (metadata) j["metadata"] = *metadata;
-        if (parallelToolCalls) j["parallel_tool_calls"] = *parallelToolCalls;
-        if (previousResponseID) j["previous_response_id"] = *previousResponseID;
-        if (store) j["store"] = *store;
-        if (stream) j["stream"] = *stream;
-        if (background) j["background"] = *background;
-        if (temperature) j["temperature"] = *temperature;
-        if (text) j["text"] = text->toJson();
-        if (topP) j["top_p"] = *topP;
-        if (truncation) j["truncation"] = *truncation;
-        if (user) j["user"] = *user;
-        if (reasoningEffort) j["reasoning_effort"] = *reasoningEffort;
-        if (tools) {
+        if (include && isParameterSupported("include")) j["include"] = *include;
+        if (instructions && isParameterSupported("instructions")) j["instructions"] = *instructions;
+        if (maxOutputTokens && isParameterSupported("max_output_tokens"))
+            j["max_output_tokens"] = *maxOutputTokens;
+        if (maxToolCalls && isParameterSupported("max_tool_calls"))
+            j["max_tool_calls"] = *maxToolCalls;
+        if (metadata && isParameterSupported("metadata")) j["metadata"] = *metadata;
+        if (parallelToolCalls && isParameterSupported("parallel_tool_calls"))
+            j["parallel_tool_calls"] = *parallelToolCalls;
+        if (previousResponseID && isParameterSupported("previous_response_id"))
+            j["previous_response_id"] = *previousResponseID;
+        if (prompt && isParameterSupported("prompt")) j["prompt"] = *prompt;
+        if (reasoning && isParameterSupported("reasoning")) j["reasoning"] = *reasoning;
+        if (serviceTier && isParameterSupported("service_tier")) j["service_tier"] = *serviceTier;
+        if (store && isParameterSupported("store")) j["store"] = *store;
+        if (stream && isParameterSupported("stream")) j["stream"] = *stream;
+        if (background && isParameterSupported("background")) j["background"] = *background;
+        if (temperature && isParameterSupported("temperature")) j["temperature"] = *temperature;
+        if (text && isParameterSupported("text")) j["text"] = text->toJson();
+        if (topLogprobs && isParameterSupported("top_logprobs")) j["top_logprobs"] = *topLogprobs;
+        if (topP && isParameterSupported("top_p")) j["top_p"] = *topP;
+        if (truncation && isParameterSupported("truncation")) j["truncation"] = *truncation;
+        if (user && isParameterSupported("user")) j["user"] = *user;
+        if (reasoningEffort && isParameterSupported("reasoning_effort"))
+            j["reasoning_effort"] = *reasoningEffort;
+        if (tools && isParameterSupported("tools")) {
             json toolsArray = json::array();
             for (const auto& tool : *tools) {
                 std::visit([&toolsArray](const auto& t) { toolsArray.push_back(t.toJson()); },
@@ -1030,12 +1100,16 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
     if (j.contains("include")) req.include = j["include"].get<std::vector<std::string>>();
     if (j.contains("instructions")) req.instructions = j["instructions"].get<std::string>();
     if (j.contains("max_output_tokens")) req.maxOutputTokens = j["max_output_tokens"].get<int>();
+    if (j.contains("max_tool_calls")) req.maxToolCalls = j["max_tool_calls"].get<int>();
     if (j.contains("metadata"))
         req.metadata = j["metadata"].get<std::unordered_map<std::string, std::string>>();
     if (j.contains("parallel_tool_calls"))
         req.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
     if (j.contains("previous_response_id"))
         req.previousResponseID = j["previous_response_id"].get<std::string>();
+    if (j.contains("prompt")) req.prompt = j["prompt"].get<std::string>();
+    if (j.contains("reasoning")) req.reasoning = j["reasoning"];
+    if (j.contains("service_tier")) req.serviceTier = j["service_tier"].get<std::string>();
     if (j.contains("store")) req.store = j["store"].get<bool>();
     if (j.contains("stream")) req.stream = j["stream"].get<bool>();
     if (j.contains("background")) req.background = j["background"].get<bool>();
@@ -1043,6 +1117,7 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
     if (j.contains("text")) req.text = TextOutputConfig::fromJson(j["text"]);
     if (j.contains("tool_choice"))
         req.toolChoice = toolChoiceModeFromString(j["tool_choice"].get<std::string>());
+    if (j.contains("top_logprobs")) req.topLogprobs = j["top_logprobs"].get<int>();
     if (j.contains("top_p")) req.topP = j["top_p"].get<double>();
     if (j.contains("truncation")) req.truncation = j["truncation"].get<std::string>();
     if (j.contains("user")) req.user = j["user"].get<std::string>();

@@ -4,6 +4,39 @@
 
 
 
+## [1.0.17] - 2025-07-13
+
+### Fixed
+- add explicit condition to skip CI on tag pushes
+
+## [1.0.16] - 2025-07-13
+
+### Fixed
+- add checkout step to check-open-prs job in release workflow
+
+## [1.0.15] - 2025-07-13
+
+### Build
+- do not run CI workflow on version tags (only release workflow runs on tags)
+- optimize workflows - merge code quality into CI and skip release on open PRs
+
+## [1.0.14] - 2025-07-13
+
+### Fixed
+- correct GPT-4.5 model status - it's a current preview model, not deprecated
+- update tests to use correct GPT-4.5 model string (gpt-4.5-preview)
+- implement parameter filtering for reasoning models (O-series)
+
+### Documentation
+- update README to clarify model enum usage and remove recommendation references
+
+### Maintenance
+- remove duplicate release-workflow.sh script
+
+### Other
+- Merge pull request #29 from lucaromagnoli/feat/release-test
+- Remove getRecommendedModel and related tests, clean up OpenAI model enum logic
+
 ## [1.0.13] - 2025-07-13
 
 ### Changed
