@@ -4,6 +4,12 @@
 
 
 
+## [1.0.15] - 2025-07-13
+
+### Build
+- do not run CI workflow on version tags (only release workflow runs on tags)
+- optimize workflows - merge code quality into CI and skip release on open PRs
+
 ## [1.0.14] - 2025-07-13
 
 ### Fixed
