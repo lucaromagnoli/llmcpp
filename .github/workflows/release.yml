@@ -9,7 +9,63 @@ env:
   CMAKE_VERSION: '3.22'
 
 jobs:
+  check-open-prs:
+    runs-on: ubuntu-latest
+    outputs:
+      has_open_prs: ${{ steps.check.outputs.has_open_prs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for open PRs
+        id: check
+        run: |
+          # Check if there are any open PRs targeting main or develop
+          OPEN_PRS=$(gh pr list --state open --base main --base develop --json number --jq 'length')
+          if [ "$OPEN_PRS" -gt 0 ]; then
+            echo "has_open_prs=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Found $OPEN_PRS open PR(s). Skipping release to avoid duplicates."
+            echo "Release will run after PR is merged."
+          else
+            echo "has_open_prs=false" >> $GITHUB_OUTPUT
+            echo "✅ No open PRs found. Proceeding with release."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  check-ci-status:
+    needs: check-open-prs
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
+    runs-on: ubuntu-latest
+    outputs:
+      ci_passed: ${{ steps.check.outputs.ci_passed }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check if CI has already passed
+        id: check
+        run: |
+          # Get the commit SHA
+          COMMIT_SHA="${{ github.sha }}"
+          echo "Checking CI status for commit: $COMMIT_SHA"
+
+          # Check if there's a successful CI run for this commit
+          CI_STATUS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/status --jq '.statuses[] | select(.context == "CI") | .state' 2>/dev/null || echo "unknown")
+
+          if [ "$CI_STATUS" = "success" ]; then
+            echo "ci_passed=true" >> $GITHUB_OUTPUT
+            echo "✅ CI has already passed for this commit. Skipping build-and-test."
+          else
+            echo "ci_passed=false" >> $GITHUB_OUTPUT
+            echo "⚠️ CI has not passed yet or status unknown. Running build-and-test."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   validate-version:
+    needs: [check-open-prs, check-ci-status]
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract.outputs.version }}
@@ -80,7 +136,8 @@ jobs:
           echo "✅ Changelog validation passed: version $VERSION found in CHANGELOG.md"
 
   build-and-test:
-    needs: validate-version
+    needs: [check-open-prs, check-ci-status, validate-version]
+    if: needs.check-open-prs.outputs.has_open_prs == 'false' && needs.check-ci-status.outputs.ci_passed == 'false'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -184,7 +241,8 @@ jobs:
           retention-days: 30
 
   create-release:
-    needs: [validate-version, build-and-test]
+    needs: [check-open-prs, check-ci-status, validate-version, build-and-test]
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write

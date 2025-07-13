@@ -119,6 +119,32 @@ int main() {
 }
 ```
 
+---
+
+### Model Enum: Type-Safe Model Selection
+
+llmcpp provides a strongly-typed `OpenAI::Model` enum for selecting models safely and with IDE autocompletion. Example usage:
+
+```cpp
+// Use any supported model from the enum
+auto response = client.sendRequest(OpenAI::Model::O3, "What's new in the O3 model?");
+auto response2 = client.sendRequest(OpenAI::Model::GPT_4_1_Mini, "Summarize this text.");
+```
+
+**Available models:**
+- O3, O3_Mini
+- O1, O1_Mini, O1_Preview, O1_Pro
+- O4_Mini, O4_Mini_Deep_Research
+- GPT_4_1, GPT_4_1_Mini, GPT_4_1_Nano
+- GPT_4o, GPT_4o_Mini
+- GPT_4_5 (preview)
+- GPT_3_5_Turbo (legacy)
+- Custom (for custom/unknown model names)
+
+> **Note:** Model recommendations change frequently. For the latest guidance on which model to use for your use case (reasoning, coding, cost, etc.), consult the [OpenAI model documentation](https://platform.openai.com/docs/models) or your provider's docs. The library no longer provides a built-in recommendation function.
+
+---
+
 ## CMake Integration
 
 ### After install (recommended)
