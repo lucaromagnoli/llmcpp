@@ -4,6 +4,23 @@
 
 
 
+## [1.0.14] - 2025-07-13
+
+### Fixed
+- correct GPT-4.5 model status - it's a current preview model, not deprecated
+- update tests to use correct GPT-4.5 model string (gpt-4.5-preview)
+- implement parameter filtering for reasoning models (O-series)
+
+### Documentation
+- update README to clarify model enum usage and remove recommendation references
+
+### Maintenance
+- remove duplicate release-workflow.sh script
+
+### Other
+- Merge pull request #29 from lucaromagnoli/feat/release-test
+- Remove getRecommendedModel and related tests, clean up OpenAI model enum logic
+
 ## [1.0.13] - 2025-07-13
 
 ### Changed
