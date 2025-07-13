@@ -81,10 +81,46 @@ jobs:
             cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
 
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30  # Add timeout to prevent runaway builds
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Improved caching for release builds
+      - name: Cache CMake build
+        uses: actions/cache@v4
+        with:
+          path: |
+            build
+            !build/tests/llmcpp_tests
+            !build/examples
+          key: release-cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', 'src/**/*', 'include/**/*') }}
+          restore-keys: |
+            release-cmake-${{ matrix.os }}-${{ matrix.build_type }}-
+
+      # Cache vcpkg packages (Windows)
+      - name: Cache vcpkg packages
+        if: matrix.os == 'windows-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg
+            ${{ github.workspace }}/vcpkg_installed
+          key: release-vcpkg-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            release-vcpkg-${{ matrix.os }}-
+
+      # Cache Homebrew (macOS) - only for releases
+      - name: Cache Homebrew (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /opt/homebrew/Cellar
+          key: release-homebrew-${{ hashFiles('.github/workflows/release.yml') }}
+          restore-keys: release-homebrew-
 
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1.14
@@ -119,10 +155,12 @@ jobs:
           cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build
+        timeout-minutes: 20  # Reduced timeout for faster failure detection
         run: |
           cmake --build build --config ${{ matrix.build_type }} --parallel
 
       - name: Test
+        timeout-minutes: 10  # Add timeout to tests
         run: |
           cd build
           ctest --output-on-failure -C ${{ matrix.build_type }} --exclude-regex "integration"
