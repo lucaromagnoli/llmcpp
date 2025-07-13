@@ -33,38 +33,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  check-ci-status:
-    needs: check-open-prs
-    if: needs.check-open-prs.outputs.has_open_prs == 'false'
-    runs-on: ubuntu-latest
-    outputs:
-      ci_passed: ${{ steps.check.outputs.ci_passed }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Check if CI has already passed
-        id: check
-        run: |
-          # Get the commit SHA
-          COMMIT_SHA="${{ github.sha }}"
-          echo "Checking CI status for commit: $COMMIT_SHA"
-
-          # Check if there's a successful CI run for this commit
-          CI_STATUS=$(gh api repos/${{ github.repository }}/commits/$COMMIT_SHA/status --jq '.statuses[] | select(.context == "CI") | .state' 2>/dev/null || echo "unknown")
-
-          if [ "$CI_STATUS" = "success" ]; then
-            echo "ci_passed=true" >> $GITHUB_OUTPUT
-            echo "✅ CI has already passed for this commit. Skipping build-and-test."
-          else
-            echo "ci_passed=false" >> $GITHUB_OUTPUT
-            echo "⚠️ CI has not passed yet or status unknown. Running build-and-test."
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   validate-version:
-    needs: [check-open-prs, check-ci-status]
+    needs: [check-open-prs]
     if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     outputs:
@@ -135,113 +107,8 @@ jobs:
           fi
           echo "✅ Changelog validation passed: version $VERSION found in CHANGELOG.md"
 
-  build-and-test:
-    needs: [check-open-prs, check-ci-status, validate-version]
-    if: needs.check-open-prs.outputs.has_open_prs == 'false' && needs.check-ci-status.outputs.ci_passed == 'false'
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        build_type: [Release]
-        include:
-          - os: ubuntu-latest
-            cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
-          - os: windows-latest
-            cmake_args: "-DLLMCPP_BUILD_TESTS=ON -DLLMCPP_BUILD_EXAMPLES=ON"
-
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30  # Add timeout to prevent runaway builds
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Improved caching for release builds
-      - name: Cache CMake build
-        uses: actions/cache@v4
-        with:
-          path: |
-            build
-            !build/tests/llmcpp_tests
-            !build/examples
-          key: release-cmake-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt', '**/CMakeLists.txt', 'src/**/*', 'include/**/*') }}
-          restore-keys: |
-            release-cmake-${{ matrix.os }}-${{ matrix.build_type }}-
-
-      # Cache vcpkg packages (Windows)
-      - name: Cache vcpkg packages
-        if: matrix.os == 'windows-latest'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg
-            ${{ github.workspace }}/vcpkg_installed
-          key: release-vcpkg-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
-          restore-keys: |
-            release-vcpkg-${{ matrix.os }}-
-
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v1.14
-        with:
-          cmake-version: ${{ env.CMAKE_VERSION }}
-
-      - name: Setup vcpkg (Windows)
-        if: runner.os == 'Windows'
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgJsonGlob: '**/vcpkg.json'
-
-      - name: Install dependencies (Ubuntu)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libssl-dev nlohmann-json3-dev
-
-      - name: Configure CMake (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
-
-      - name: Configure CMake (Non-Windows)
-        if: runner.os != 'Windows'
-        run: |
-          cmake -B build ${{ matrix.cmake_args }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-
-      - name: Build
-        timeout-minutes: 20  # Reduced timeout for faster failure detection
-        run: |
-          cmake --build build --config ${{ matrix.build_type }} --parallel
-
-      - name: Test
-        timeout-minutes: 10  # Add timeout to tests
-        run: |
-          cd build
-          ctest --output-on-failure -C ${{ matrix.build_type }} --exclude-regex "integration"
-
-      - name: Package (Linux/macOS)
-        if: runner.os != 'Windows'
-        run: |
-          cd build
-          cpack -G TGZ
-          ls -la *.tar.gz
-
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          cd build
-          cpack -G ZIP
-          dir *.zip
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: llmcpp-${{ needs.validate-version.outputs.version }}-${{ runner.os }}
-          path: |
-            build/*.tar.gz
-            build/*.zip
-          retention-days: 30
-
   create-release:
-    needs: [check-open-prs, check-ci-status, validate-version, build-and-test]
+    needs: [check-open-prs, validate-version]
     if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     permissions:
@@ -252,11 +119,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Fetch all history for changelog generation
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: release-assets
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -279,8 +141,6 @@ jobs:
           body: ${{ steps.changelog.outputs.changelog }}
           prerelease: ${{ needs.validate-version.outputs.is_prerelease }}
           draft: false
-          files: |
-            release-assets/**/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -288,9 +148,8 @@ jobs:
         run: |
           echo "## 🎉 Release ${{ needs.validate-version.outputs.version }} Created!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 📦 Assets:" >> $GITHUB_STEP_SUMMARY
-          echo "- Linux (Ubuntu) build artifacts" >> $GITHUB_STEP_SUMMARY
-          echo "- Windows build artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Release Notes:" >> $GITHUB_STEP_SUMMARY
+          echo "Release notes generated from CHANGELOG.md" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
