@@ -63,11 +63,13 @@ class OpenAIClient : public LLMClient {
      * Convenience methods with Model enum
      */
     LLMResponse sendRequest(OpenAI::Model model, const std::string& prompt, LLMContext context = {},
-                            int maxTokens = 200, float temperature = 0.7f);
+                            std::optional<int> maxTokens = std::nullopt,
+                            std::optional<float> temperature = std::nullopt);
     std::future<LLMResponse> sendRequestAsync(OpenAI::Model model, const std::string& prompt,
                                               LLMResponseCallback callback = nullptr,
-                                              LLMContext context = {}, int maxTokens = 200,
-                                              float temperature = 0.7f);
+                                              LLMContext context = {},
+                                              std::optional<int> maxTokens = std::nullopt,
+                                              std::optional<float> temperature = std::nullopt);
 
     /**
      * Configuration methods

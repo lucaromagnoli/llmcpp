@@ -158,7 +158,7 @@ TEST_CASE("Complex LLMRequest with all fields", "[llm][types]") {
     config.model = "gpt-4o";
     config.functionName = "analyze_data";
     config.jsonSchema = R"({"type": "object", "properties": {"result": {"type": "string"}}})";
-    config.temperature = 0.8f;
+    config.temperature = 0.8f;  // Set temperature explicitly
     config.maxTokens = 500;
 
     LLMContext context = {json{{"role", "user"}, {"content", "data1"}},
@@ -257,5 +257,41 @@ TEST_CASE("LLMResponse complex scenarios", "[llm][types]") {
         REQUIRE(str.find("80") != std::string::npos);   // output tokens
         REQUIRE(str.find("200") != std::string::npos);  // total tokens
         REQUIRE(str.find("analysis completed") != std::string::npos);
+    }
+}
+
+TEST_CASE("LLMRequestConfig optional temperature", "[llm][types][temperature]") {
+    SECTION("Default config should have no temperature") {
+        LLMRequestConfig config;
+        REQUIRE(!config.temperature.has_value());
+    }
+
+    SECTION("Setting temperature explicitly") {
+        LLMRequestConfig config;
+        config.temperature = 0.5f;
+        REQUIRE(config.temperature.has_value());
+        REQUIRE(*config.temperature == 0.5f);
+    }
+
+    SECTION("toString with temperature set") {
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-4o";
+        config.temperature = 0.7f;
+
+        std::string str = config.toString();
+        REQUIRE(str.find("0.7") != std::string::npos);
+        REQUIRE(str.find("temperature") != std::string::npos);
+    }
+
+    SECTION("toString without temperature") {
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-4o";
+        // temperature not set
+
+        std::string str = config.toString();
+        REQUIRE(str.find("not set") != std::string::npos);
+        REQUIRE(str.find("temperature") != std::string::npos);
     }
 }

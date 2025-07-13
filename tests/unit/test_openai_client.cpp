@@ -138,7 +138,7 @@ TEST_CASE("OpenAIClient request building", "[openai][client][request-building]")
     SECTION("Build Chat Completions request with system message") {
         LLMRequestConfig config;
         config.model = "gpt-4o";
-        config.temperature = 0.8f;
+        config.temperature = 0.8f;  // Set temperature explicitly
         config.maxTokens = 300;
 
         std::string systemPrompt =
