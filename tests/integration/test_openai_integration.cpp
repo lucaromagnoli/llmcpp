@@ -422,6 +422,125 @@ TEST_CASE("OpenAI Integration - ClientManager", "[openai][integration][manual]")
     }
 }
 
+TEST_CASE("OpenAI o3-mini model without temperature", "[openai][integration][o3-mini]") {
+    if (!shouldRunIntegrationTests()) {
+        SKIP("Integration tests disabled");
+    }
+
+    OpenAIClient client(getApiKey());
+
+    SECTION("o3-mini should work without temperature parameter") {
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "o3-mini";
+        // config.maxTokens = 50; // Do not set maxTokens
+        // Note: temperature is not set (optional)
+
+        LLMRequest request(config, "What is 2+2? Answer with just the number.");
+
+        std::cout << "🔍 Testing o3-mini model without temperature..." << std::endl;
+        std::cout << "📤 Request config: " << config.toString() << std::endl;
+        std::cout << "📤 Request prompt: " << request.prompt << std::endl;
+
+        LLMResponse response = client.sendRequest(request);
+
+        if (!response.success) {
+            std::cout << "❌ Request failed: " << response.errorMessage << std::endl;
+            std::cout << "Raw result: " << response.result.dump(2) << std::endl;
+        }
+
+        REQUIRE(response.success == true);
+        REQUIRE(!response.responseId.empty());
+        REQUIRE(response.usage.inputTokens > 0);
+        REQUIRE(response.usage.outputTokens > 0);
+        REQUIRE(response.result.contains("text"));
+
+        std::cout << "✅ o3-mini without temperature successful!" << std::endl;
+        std::cout << "📝 Response ID: " << response.responseId << std::endl;
+        std::cout << "🔧 Usage: " << response.usage.toString() << std::endl;
+        std::cout << "📋 Result: " << response.result.dump(2) << std::endl;
+    }
+
+    SECTION("o3-mini should work without any temperature parameter") {
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "o3-mini";
+        // Do not set maxTokens or temperature for o3 models
+
+        LLMRequest request(config, "What is 3+3? Answer with just the number.");
+
+        std::cout << "🔍 Testing o3-mini model without any temperature parameter..." << std::endl;
+        std::cout << "📤 Request config: " << config.toString() << std::endl;
+        std::cout << "📤 Request prompt: " << request.prompt << std::endl;
+
+        LLMResponse response = client.sendRequest(request);
+
+        std::cout << "🔍 Response success: " << (response.success ? "true" : "false") << std::endl;
+        if (!response.success) {
+            std::cout << "❌ Request failed: " << response.errorMessage << std::endl;
+            std::cout << "Raw result: " << response.result.dump(2) << std::endl;
+        } else {
+            std::cout << "✅ Request succeeded!" << std::endl;
+        }
+
+        REQUIRE(response.success == true);
+        REQUIRE(!response.responseId.empty());
+        REQUIRE(response.usage.inputTokens > 0);
+        REQUIRE(response.usage.outputTokens > 0);
+        REQUIRE(response.result.contains("text"));
+
+        std::cout << "✅ o3-mini without temperature successful!" << std::endl;
+        std::cout << "📝 Response ID: " << response.responseId << std::endl;
+        std::cout << "🔧 Usage: " << response.usage.toString() << std::endl;
+        std::cout << "📋 Result: " << response.result.dump(2) << std::endl;
+    }
+
+    SECTION("Compare o3-mini requests (both without temperature)") {
+        // Test without temperature
+        LLMRequestConfig config1;
+        config1.client = "openai";
+        config1.model = "o3-mini";
+        // Do not set maxTokens or temperature for o3 models
+
+        LLMRequest request1(config1, "Say 'Hello' and nothing else.");
+
+        // Test without temperature (same as above)
+        LLMRequestConfig config2;
+        config2.client = "openai";
+        config2.model = "o3-mini";
+        // Do not set maxTokens or temperature for o3 models
+
+        LLMRequest request2(config2, "Say 'Hello' and nothing else.");
+
+        std::cout << "🔍 Comparing o3-mini requests (both without temperature)..." << std::endl;
+
+        LLMResponse response1 = client.sendRequest(request1);
+        LLMResponse response2 = client.sendRequest(request2);
+
+        if (!response1.success) {
+            std::cout << "❌ Request 1 failed: " << response1.errorMessage << std::endl;
+            std::cout << "Raw result: " << response1.result.dump(2) << std::endl;
+        }
+        if (!response2.success) {
+            std::cout << "❌ Request 2 failed: " << response2.errorMessage << std::endl;
+            std::cout << "Raw result: " << response2.result.dump(2) << std::endl;
+        }
+
+        REQUIRE(response1.success == true);
+        REQUIRE(response2.success == true);
+        REQUIRE(!response1.responseId.empty());
+        REQUIRE(!response2.responseId.empty());
+
+        std::cout << "✅ Both requests successful!" << std::endl;
+        std::cout << "📝 Response 1: " << response1.responseId << std::endl;
+        std::cout << "📝 Response 2: " << response2.responseId << std::endl;
+        std::cout << "🔧 Usage 1: " << response1.usage.toString() << std::endl;
+        std::cout << "🔧 Usage 2: " << response2.usage.toString() << std::endl;
+        std::cout << "📋 Result 1: " << response1.result.dump(2) << std::endl;
+        std::cout << "📋 Result 2: " << response2.result.dump(2) << std::endl;
+    }
+}
+
 // Manual test runner helper
 TEST_CASE("Integration test instructions", "[integration][info]") {
     std::cout << "\n🔧 To run OpenAI integration tests:\n" << std::endl;
