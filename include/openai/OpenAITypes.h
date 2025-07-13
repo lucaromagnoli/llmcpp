@@ -625,44 +625,84 @@ struct ResponsesRequest {
     std::string model;
     std::optional<ResponsesInput> input;
 
-    // Optional configuration
+    // Optional configuration (all truly optional - can be omitted entirely)
     std::optional<std::vector<std::string>> include;  // What to include in response
     std::optional<std::string> instructions;          // System-level instructions
     std::optional<int> maxOutputTokens;
+    std::optional<int> maxToolCalls;  // Maximum number of tool calls
     std::optional<std::unordered_map<std::string, std::string>> metadata;
     std::optional<bool> parallelToolCalls;
     std::optional<std::string> previousResponseID;  // For conversation continuity
-    std::optional<bool> store;                      // Whether to store for retrieval
-    std::optional<bool> stream;                     // Enable streaming
-    std::optional<bool> background;                 // Background processing for long tasks
+    std::optional<std::string> prompt;              // Alternative to instructions
+    std::optional<json> reasoning;                  // Reasoning configuration
+    std::optional<std::string> serviceTier;  // "auto", "default", "flex", "scale", "priority"
+    std::optional<bool> store;               // Whether to store for retrieval
+    std::optional<bool> stream;              // Enable streaming
+    std::optional<bool> background;          // Background processing for long tasks
     std::optional<double> temperature;
     std::optional<TextOutputConfig> text;  // Output format configuration
     ToolChoiceMode toolChoice = ToolChoiceMode::Auto;
     std::optional<std::vector<ToolVariant>> tools;
+    std::optional<int> topLogprobs;  // Number of top logprobs to return
     std::optional<double> topP;
     std::optional<std::string> truncation;       // "auto" or "disabled"
     std::optional<std::string> user;             // User identifier
     std::optional<std::string> reasoningEffort;  // "low", "medium", "high" for reasoning models
 
+    /**
+     * Check if a parameter is supported for the current model
+     */
+    bool isParameterSupported(const std::string& paramName) const {
+        // Convert model string to enum for easier checking
+        auto modelEnum = modelFromString(model);
+
+        // Reasoning models (O-series) have different parameter support
+        if (modelEnum == Model::O3 || modelEnum == Model::O3_Mini || modelEnum == Model::O1 ||
+            modelEnum == Model::O1_Mini || modelEnum == Model::O1_Preview ||
+            modelEnum == Model::O1_Pro || modelEnum == Model::O4_Mini ||
+            modelEnum == Model::O4_Mini_Deep_Research) {
+            // Parameters NOT supported by reasoning models
+            if (paramName == "temperature" || paramName == "top_p" || paramName == "top_logprobs" ||
+                paramName == "truncation") {
+                return false;
+            }
+        }
+
+        // All other parameters are supported by all models
+        return true;
+    }
+
     json toJson() const {
         json j = {{"model", model}, {"tool_choice", toString(toolChoice)}};
+
+        // Only include parameters that are supported by the model
         if (input) j["input"] = input->toJson();
-        if (include) j["include"] = *include;
-        if (instructions) j["instructions"] = *instructions;
-        if (maxOutputTokens) j["max_output_tokens"] = *maxOutputTokens;
-        if (metadata) j["metadata"] = *metadata;
-        if (parallelToolCalls) j["parallel_tool_calls"] = *parallelToolCalls;
-        if (previousResponseID) j["previous_response_id"] = *previousResponseID;
-        if (store) j["store"] = *store;
-        if (stream) j["stream"] = *stream;
-        if (background) j["background"] = *background;
-        if (temperature) j["temperature"] = *temperature;
-        if (text) j["text"] = text->toJson();
-        if (topP) j["top_p"] = *topP;
-        if (truncation) j["truncation"] = *truncation;
-        if (user) j["user"] = *user;
-        if (reasoningEffort) j["reasoning_effort"] = *reasoningEffort;
-        if (tools) {
+        if (include && isParameterSupported("include")) j["include"] = *include;
+        if (instructions && isParameterSupported("instructions")) j["instructions"] = *instructions;
+        if (maxOutputTokens && isParameterSupported("max_output_tokens"))
+            j["max_output_tokens"] = *maxOutputTokens;
+        if (maxToolCalls && isParameterSupported("max_tool_calls"))
+            j["max_tool_calls"] = *maxToolCalls;
+        if (metadata && isParameterSupported("metadata")) j["metadata"] = *metadata;
+        if (parallelToolCalls && isParameterSupported("parallel_tool_calls"))
+            j["parallel_tool_calls"] = *parallelToolCalls;
+        if (previousResponseID && isParameterSupported("previous_response_id"))
+            j["previous_response_id"] = *previousResponseID;
+        if (prompt && isParameterSupported("prompt")) j["prompt"] = *prompt;
+        if (reasoning && isParameterSupported("reasoning")) j["reasoning"] = *reasoning;
+        if (serviceTier && isParameterSupported("service_tier")) j["service_tier"] = *serviceTier;
+        if (store && isParameterSupported("store")) j["store"] = *store;
+        if (stream && isParameterSupported("stream")) j["stream"] = *stream;
+        if (background && isParameterSupported("background")) j["background"] = *background;
+        if (temperature && isParameterSupported("temperature")) j["temperature"] = *temperature;
+        if (text && isParameterSupported("text")) j["text"] = text->toJson();
+        if (topLogprobs && isParameterSupported("top_logprobs")) j["top_logprobs"] = *topLogprobs;
+        if (topP && isParameterSupported("top_p")) j["top_p"] = *topP;
+        if (truncation && isParameterSupported("truncation")) j["truncation"] = *truncation;
+        if (user && isParameterSupported("user")) j["user"] = *user;
+        if (reasoningEffort && isParameterSupported("reasoning_effort"))
+            j["reasoning_effort"] = *reasoningEffort;
+        if (tools && isParameterSupported("tools")) {
             json toolsArray = json::array();
             for (const auto& tool : *tools) {
                 std::visit([&toolsArray](const auto& t) { toolsArray.push_back(t.toJson()); },
@@ -1060,12 +1100,16 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
     if (j.contains("include")) req.include = j["include"].get<std::vector<std::string>>();
     if (j.contains("instructions")) req.instructions = j["instructions"].get<std::string>();
     if (j.contains("max_output_tokens")) req.maxOutputTokens = j["max_output_tokens"].get<int>();
+    if (j.contains("max_tool_calls")) req.maxToolCalls = j["max_tool_calls"].get<int>();
     if (j.contains("metadata"))
         req.metadata = j["metadata"].get<std::unordered_map<std::string, std::string>>();
     if (j.contains("parallel_tool_calls"))
         req.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
     if (j.contains("previous_response_id"))
         req.previousResponseID = j["previous_response_id"].get<std::string>();
+    if (j.contains("prompt")) req.prompt = j["prompt"].get<std::string>();
+    if (j.contains("reasoning")) req.reasoning = j["reasoning"];
+    if (j.contains("service_tier")) req.serviceTier = j["service_tier"].get<std::string>();
     if (j.contains("store")) req.store = j["store"].get<bool>();
     if (j.contains("stream")) req.stream = j["stream"].get<bool>();
     if (j.contains("background")) req.background = j["background"].get<bool>();
@@ -1073,6 +1117,7 @@ inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
     if (j.contains("text")) req.text = TextOutputConfig::fromJson(j["text"]);
     if (j.contains("tool_choice"))
         req.toolChoice = toolChoiceModeFromString(j["tool_choice"].get<std::string>());
+    if (j.contains("top_logprobs")) req.topLogprobs = j["top_logprobs"].get<int>();
     if (j.contains("top_p")) req.topP = j["top_p"].get<double>();
     if (j.contains("truncation")) req.truncation = j["truncation"].get<std::string>();
     if (j.contains("user")) req.user = j["user"].get<std::string>();
