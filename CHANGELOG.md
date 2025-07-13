@@ -4,6 +4,11 @@
 
 
 
+## [1.0.13] - 2025-07-13
+
+### Changed
+- remove macOS from release builds for cost optimization
+
 ## [1.0.12] - 2025-07-13
 
 ### Added
