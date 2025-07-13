@@ -224,6 +224,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
         version = self.get_current_version()
         print(f"Current version: {version}")
     
+    def replace_unreleased_with_version(self, version: str) -> None:
+        """Replace [Unreleased] section with specific version"""
+        if not Path(self.changelog_file).exists():
+            print(f"❌ Changelog file {self.changelog_file} not found")
+            return
+        
+        with open(self.changelog_file, 'r') as f:
+            content = f.read()
+        
+        # Replace [Unreleased] with the version
+        import re
+        pattern = r'## \[Unreleased\] - \d{4}-\d{2}-\d{2}'
+        replacement = f'## [{version}] - {datetime.now().strftime("%Y-%m-%d")}'
+        
+        if re.search(pattern, content):
+            new_content = re.sub(pattern, replacement, content)
+            
+            # Add new [Unreleased] section at the top
+            unreleased_section = f'\n## [Unreleased] - Unreleased\n\n'
+            lines = new_content.split('\n')
+            
+            # Find the position after the header
+            insert_pos = 0
+            for i, line in enumerate(lines):
+                if line.startswith('# Changelog'):
+                    insert_pos = i + 1
+                    break
+            
+            # Insert new [Unreleased] section
+            lines.insert(insert_pos, unreleased_section)
+            new_content = '\n'.join(lines)
+            
+            with open(self.changelog_file, 'w') as f:
+                f.write(new_content)
+            
+            print(f"✅ Replaced [Unreleased] with version {version}")
+        else:
+            print("⚠️  No [Unreleased] section found to replace")
+
     def show_help(self) -> None:
         """Show help message"""
         print("""Usage: python scripts/update-changelog.py [command]
@@ -232,12 +271,14 @@ Commands:
   update         - Update changelog with new commits (default)
   init           - Initialize changelog file
   release-notes  - Generate release notes for GitHub release
+  replace        - Replace [Unreleased] with specific version
   version        - Show current version
   help           - Show this help message
 
 Examples:
   python scripts/update-changelog.py update
   python scripts/update-changelog.py release-notes v1.0.3 v1.0.4
+  python scripts/update-changelog.py replace 1.0.4
 """)
 
 
@@ -261,6 +302,12 @@ def main():
         current_tag = sys.argv[3]
         release_notes = generator.generate_release_notes(prev_tag, current_tag)
         print(release_notes)
+    elif command == "replace":
+        if len(sys.argv) < 3:
+            print("❌ Usage: python scripts/update-changelog.py replace <version>")
+            sys.exit(1)
+        version = sys.argv[2]
+        generator.replace_unreleased_with_version(version)
     elif command == "version":
         generator.show_version()
     elif command in ["help", "-h", "--help"]:

@@ -66,6 +66,19 @@ jobs:
           fi
           echo "✅ Version validation passed: $VERSION is newer than $CMAKE_VERSION"
 
+      - name: Validate changelog is up to date
+        run: |
+          VERSION="${{ steps.extract.outputs.version }}"
+
+          # Check if changelog contains the version
+          if ! grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            echo "❌ Changelog validation failed!"
+            echo "CHANGELOG.md does not contain version $VERSION"
+            echo "Make sure to run the release script which updates the changelog before tagging"
+            exit 1
+          fi
+          echo "✅ Changelog validation passed: version $VERSION found in CHANGELOG.md"
+
   build-and-test:
     needs: validate-version
     strategy:
@@ -210,24 +223,25 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Generate changelog and release notes
+      - name: Generate release notes from changelog
         id: changelog
         run: |
-          # Get the previous tag
-          PREV_TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+' | head -2 | tail -1)
-          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+          VERSION="${{ needs.validate-version.outputs.version }}"
 
-          echo "Generating changelog from $PREV_TAG to $CURRENT_TAG"
+          # Extract release notes from CHANGELOG.md
+          if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+            # Get the content between the version header and the next version or end
+            RELEASE_NOTES=$(awk -v version="$VERSION" '
+              /^## \[' version '\]/ { in_version=1; next }
+              /^## \[/ && in_version { exit }
+              in_version { print }
+            ' CHANGELOG.md | sed '1d')  # Remove the first line (date)
 
-          # Update the changelog file
-          python scripts/update-changelog.py update
-
-          # Generate release notes for GitHub
-          if [ -n "$PREV_TAG" ]; then
-            RELEASE_NOTES=$(python scripts/update-changelog.py release-notes "$PREV_TAG" "$CURRENT_TAG")
+            # Add header
+            RELEASE_NOTES="## 🚀 What's Changed\n\n$RELEASE_NOTES"
           else
-            # Fallback for first release
-            RELEASE_NOTES="## 🚀 Initial Release"$'\n\n'"This is the first release of llmcpp."$'\n\n'"**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/$CURRENT_TAG"
+            # Fallback if changelog section not found
+            RELEASE_NOTES="## 🚀 Release $VERSION\n\nThis release includes various improvements and bug fixes.\n\n**Full Changelog**: https://github.com/${{ github.repository }}/releases/tag/v$VERSION"
           fi
 
           # Set output for use in release
@@ -236,24 +250,6 @@ jobs:
             echo "$RELEASE_NOTES"
             echo "EOF"
           } >> $GITHUB_OUTPUT
-
-      - name: Update CHANGELOG.md for release
-        run: |
-          CURRENT_TAG=${GITHUB_REF#refs/tags/}
-
-          # Replace [Unreleased] with the actual version and date
-          sed -i "s/## \[Unreleased\] - .*/## [$CURRENT_TAG] - $(date +%Y-%m-%d)/" CHANGELOG.md
-
-          # Add new [Unreleased] section at the top
-          sed -i '/^# Changelog/a\## [Unreleased] - Unreleased' CHANGELOG.md
-
-      - name: Commit changelog updates
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add CHANGELOG.md
-          git commit -m "docs: update changelog for ${{ github.ref_name }}" || echo "No changes to commit"
-          git push origin ${{ github.ref_name }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
@@ -279,4 +275,3 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
           echo "- [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
-          echo "- [Full Changelog](https://github.com/${{ github.repository }}/compare/$PREV_TAG..${{ github.ref_name }})" >> $GITHUB_STEP_SUMMARY
