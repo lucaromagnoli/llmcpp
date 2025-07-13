@@ -4,6 +4,20 @@
 
 
 
+## [1.0.9] - 2025-07-13
+
+### Added
+- add interactive release workflow with changelog editing
+
+### Other
+- Merge pull request #26 from lucaromagnoli/feat/cost-opt
+
+
+
+## [Unreleased] - Unreleased
+
+
+
 ## [1.0.8] - 2025-07-13
 
 ### Added

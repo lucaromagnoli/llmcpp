@@ -1,0 +1,79 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version bump type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+      custom_version:
+        description: 'Custom version (if version_type is custom)'
+        required: false
+        type: string
+      skip_changelog_edit:
+        description: 'Skip interactive changelog editing'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Configure Git
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+
+      - name: Run release script
+        run: |
+          # Make script executable
+          chmod +x scripts/release.sh
+
+          # Run release script with provided inputs
+          if [ "${{ github.event.inputs.version_type }}" = "custom" ]; then
+            if [ -z "${{ github.event.inputs.custom_version }}" ]; then
+              echo "❌ Custom version type requires custom_version input"
+              exit 1
+            fi
+            ./scripts/release.sh custom "${{ github.event.inputs.custom_version }}"
+          else
+            ./scripts/release.sh "${{ github.event.inputs.version_type }}"
+          fi
+
+      - name: Create release summary
+        run: |
+          echo "## 🎉 Manual Release Created!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Details:" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version Type**: ${{ github.event.inputs.version_type }}" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.version_type }}" = "custom" ]; then
+            echo "- **Custom Version**: ${{ github.event.inputs.custom_version }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "- **Branch**: $(git branch --show-current)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Latest Tag**: $(git describe --tags --abbrev=0)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links:" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Page](https://github.com/${{ github.repository }}/releases/latest)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Actions](https://github.com/${{ github.repository }}/actions)" >> $GITHUB_STEP_SUMMARY
