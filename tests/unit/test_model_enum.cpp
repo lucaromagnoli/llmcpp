@@ -10,7 +10,7 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_1_Nano) == "gpt-4.1-nano");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4o) == "gpt-4o");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4o_Mini) == "gpt-4o-mini");
-        REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_5) == "gpt-4.5");
+        REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_5) == "gpt-4.5-preview");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_3_5_Turbo) == "gpt-3.5-turbo");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::Custom) == "custom");
     }
@@ -21,7 +21,7 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
         REQUIRE(OpenAIClient::stringToModel("gpt-4.1-nano") == OpenAI::Model::GPT_4_1_Nano);
         REQUIRE(OpenAIClient::stringToModel("gpt-4o") == OpenAI::Model::GPT_4o);
         REQUIRE(OpenAIClient::stringToModel("gpt-4o-mini") == OpenAI::Model::GPT_4o_Mini);
-        REQUIRE(OpenAIClient::stringToModel("gpt-4.5") == OpenAI::Model::GPT_4_5);
+        REQUIRE(OpenAIClient::stringToModel("gpt-4.5-preview") == OpenAI::Model::GPT_4_5);
         REQUIRE(OpenAIClient::stringToModel("gpt-3.5-turbo") == OpenAI::Model::GPT_3_5_Turbo);
         REQUIRE(OpenAIClient::stringToModel("unknown-model") == OpenAI::Model::Custom);
     }
