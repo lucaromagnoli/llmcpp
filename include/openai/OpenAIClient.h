@@ -130,7 +130,6 @@ class OpenAIClient : public LLMClient {
     static std::string modelToString(OpenAI::Model model);
     static OpenAI::Model stringToModel(const std::string& modelStr);
     static std::vector<OpenAI::Model> getAvailableModelEnums();
-    static OpenAI::Model getRecommendedModelEnum(const std::string& useCase);
 
    private:
     /**

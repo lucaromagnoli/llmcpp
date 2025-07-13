@@ -17,6 +17,20 @@ namespace OpenAI {
  * Provides type safety and IDE auto-completion for model selection
  */
 enum class Model {
+    // O3 series (Latest - 2025)
+    O3,       // o3 - Latest reasoning model
+    O3_Mini,  // o3-mini - Cost-effective reasoning model
+
+    // O1 series (2024-2025)
+    O1,          // o1 - Advanced reasoning model
+    O1_Mini,     // o1-mini - Cost-effective O1 model
+    O1_Preview,  // o1-preview - Preview version
+    O1_Pro,      // o1-pro - Professional version
+
+    // O4 series (Latest - 2025)
+    O4_Mini,                // o4-mini - Latest mini model
+    O4_Mini_Deep_Research,  // o4-mini-deep-research - Research focused
+
     // GPT-4.1 series (Latest - April 2025)
     GPT_4_1,  // gpt-4.1 - Latest model with superior coding, instruction following, and structured
               // outputs
@@ -42,6 +56,22 @@ enum class Model {
  */
 inline std::string toString(Model model) {
     switch (model) {
+        case Model::O3:
+            return "o3";
+        case Model::O3_Mini:
+            return "o3-mini";
+        case Model::O1:
+            return "o1";
+        case Model::O1_Mini:
+            return "o1-mini";
+        case Model::O1_Preview:
+            return "o1-preview";
+        case Model::O1_Pro:
+            return "o1-pro";
+        case Model::O4_Mini:
+            return "o4-mini";
+        case Model::O4_Mini_Deep_Research:
+            return "o4-mini-deep-research";
         case Model::GPT_4_1:
             return "gpt-4.1";
         case Model::GPT_4_1_Mini:
@@ -66,6 +96,14 @@ inline std::string toString(Model model) {
  * Convert API string to OpenAI Model enum
  */
 inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "o3") return Model::O3;
+    if (modelStr == "o3-mini") return Model::O3_Mini;
+    if (modelStr == "o1") return Model::O1;
+    if (modelStr == "o1-mini") return Model::O1_Mini;
+    if (modelStr == "o1-preview") return Model::O1_Preview;
+    if (modelStr == "o1-pro") return Model::O1_Pro;
+    if (modelStr == "o4-mini") return Model::O4_Mini;
+    if (modelStr == "o4-mini-deep-research") return Model::O4_Mini_Deep_Research;
     if (modelStr == "gpt-4.1") return Model::GPT_4_1;
     if (modelStr == "gpt-4.1-mini") return Model::GPT_4_1_Mini;
     if (modelStr == "gpt-4.1-nano") return Model::GPT_4_1_Nano;
@@ -81,6 +119,14 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline bool supportsStructuredOutputs(Model model) {
     switch (model) {
+        case Model::O3:
+        case Model::O3_Mini:
+        case Model::O1:
+        case Model::O1_Mini:
+        case Model::O1_Preview:
+        case Model::O1_Pro:
+        case Model::O4_Mini:
+        case Model::O4_Mini_Deep_Research:
         case Model::GPT_4_1:
         case Model::GPT_4_1_Mini:
         case Model::GPT_4_1_Nano:
@@ -93,22 +139,6 @@ inline bool supportsStructuredOutputs(Model model) {
             return false;
     }
     return false;
-}
-
-/**
- * Get recommended model for specific use cases
- */
-inline Model getRecommendedModel(const std::string& useCase) {
-    if (useCase == "coding" || useCase == "structured_output") {
-        return Model::GPT_4_1;
-    } else if (useCase == "cost_effective") {
-        return Model::GPT_4_1_Mini;
-    } else if (useCase == "fastest" || useCase == "classification") {
-        return Model::GPT_4_1_Nano;
-    } else if (useCase == "general") {
-        return Model::GPT_4o;
-    }
-    return Model::GPT_4_1_Mini;  // Default balanced choice
 }
 
 // OpenAI-specific simple message structure for convenience

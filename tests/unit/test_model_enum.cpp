@@ -35,16 +35,6 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
         REQUIRE(client.isModelSupported(OpenAI::Model::Custom) == false);
     }
 
-    SECTION("Recommended model selection") {
-        REQUIRE(OpenAIClient::getRecommendedModelEnum("coding") == OpenAI::Model::GPT_4_1);
-        REQUIRE(OpenAIClient::getRecommendedModelEnum("cost_effective") ==
-                OpenAI::Model::GPT_4_1_Mini);
-        REQUIRE(OpenAIClient::getRecommendedModelEnum("fastest") == OpenAI::Model::GPT_4_1_Nano);
-        REQUIRE(OpenAIClient::getRecommendedModelEnum("general") == OpenAI::Model::GPT_4o);
-        REQUIRE(OpenAIClient::getRecommendedModelEnum("unknown") ==
-                OpenAI::Model::GPT_4_1_Mini);  // default
-    }
-
     SECTION("Available model enums") {
         auto models = OpenAIClient::getAvailableModelEnums();
         REQUIRE(models.size() >= 8);  // Should include all defined models

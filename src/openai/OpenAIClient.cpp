@@ -334,7 +334,3 @@ std::vector<OpenAI::Model> OpenAIClient::getAvailableModelEnums() {
             OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,  OpenAI::Model::GPT_4_5,
             OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
 }
-
-OpenAI::Model OpenAIClient::getRecommendedModelEnum(const std::string& useCase) {
-    return OpenAI::getRecommendedModel(useCase);
-}
