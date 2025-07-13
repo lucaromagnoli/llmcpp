@@ -4,6 +4,11 @@
 
 
 
+## [1.0.17] - 2025-07-13
+
+### Fixed
+- add explicit condition to skip CI on tag pushes
+
 ## [1.0.16] - 2025-07-13
 
 ### Fixed
