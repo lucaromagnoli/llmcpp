@@ -4,6 +4,11 @@
 
 
 
+## [1.0.16] - 2025-07-13
+
+### Fixed
+- add checkout step to check-open-prs job in release workflow
+
 ## [1.0.15] - 2025-07-13
 
 ### Build
