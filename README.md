@@ -137,7 +137,7 @@ auto response2 = client.sendRequest(OpenAI::Model::GPT_4_1_Mini, "Summarize this
 - O4_Mini, O4_Mini_Deep_Research
 - GPT_4_1, GPT_4_1_Mini, GPT_4_1_Nano
 - GPT_4o, GPT_4o_Mini
-- GPT_4_5 (deprecated)
+- GPT_4_5 (preview)
 - GPT_3_5_Turbo (legacy)
 - Custom (for custom/unknown model names)
 

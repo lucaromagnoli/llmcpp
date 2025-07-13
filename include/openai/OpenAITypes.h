@@ -41,8 +41,8 @@ enum class Model {
     GPT_4o,       // gpt-4o - Good balance of performance and cost
     GPT_4o_Mini,  // gpt-4o-mini - Cost-effective for basic tasks
 
-    // GPT-4.5 series (being deprecated)
-    GPT_4_5,  // gpt-4.5 - Preview model (deprecated July 2025)
+    // GPT-4.5 series (Latest - 2025)
+    GPT_4_5,  // gpt-4.5-preview - Latest preview model
 
     // GPT-3.5 series (legacy)
     GPT_3_5_Turbo,  // gpt-3.5-turbo - Legacy model
@@ -83,7 +83,7 @@ inline std::string toString(Model model) {
         case Model::GPT_4o_Mini:
             return "gpt-4o-mini";
         case Model::GPT_4_5:
-            return "gpt-4.5";
+            return "gpt-4.5-preview";
         case Model::GPT_3_5_Turbo:
             return "gpt-3.5-turbo";
         case Model::Custom:
@@ -109,7 +109,7 @@ inline Model modelFromString(const std::string& modelStr) {
     if (modelStr == "gpt-4.1-nano") return Model::GPT_4_1_Nano;
     if (modelStr == "gpt-4o") return Model::GPT_4o;
     if (modelStr == "gpt-4o-mini") return Model::GPT_4o_Mini;
-    if (modelStr == "gpt-4.5") return Model::GPT_4_5;
+    if (modelStr == "gpt-4.5-preview") return Model::GPT_4_5;
     if (modelStr == "gpt-3.5-turbo") return Model::GPT_3_5_Turbo;
     return Model::Custom;
 }
