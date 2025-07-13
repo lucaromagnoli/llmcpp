@@ -9,7 +9,30 @@ env:
   CMAKE_VERSION: '3.22'
 
 jobs:
+  check-open-prs:
+    runs-on: ubuntu-latest
+    outputs:
+      has_open_prs: ${{ steps.check.outputs.has_open_prs }}
+    steps:
+      - name: Check for open PRs
+        id: check
+        run: |
+          # Check if there are any open PRs targeting main or develop
+          OPEN_PRS=$(gh pr list --state open --base main --base develop --json number --jq 'length')
+          if [ "$OPEN_PRS" -gt 0 ]; then
+            echo "has_open_prs=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Found $OPEN_PRS open PR(s). Skipping release to avoid duplicates."
+            echo "Release will run after PR is merged."
+          else
+            echo "has_open_prs=false" >> $GITHUB_OUTPUT
+            echo "✅ No open PRs found. Proceeding with release."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   validate-version:
+    needs: check-open-prs
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract.outputs.version }}
@@ -80,7 +103,8 @@ jobs:
           echo "✅ Changelog validation passed: version $VERSION found in CHANGELOG.md"
 
   build-and-test:
-    needs: validate-version
+    needs: [check-open-prs, validate-version]
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
@@ -184,7 +208,8 @@ jobs:
           retention-days: 30
 
   create-release:
-    needs: [validate-version, build-and-test]
+    needs: [check-open-prs, validate-version, build-and-test]
+    if: needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
