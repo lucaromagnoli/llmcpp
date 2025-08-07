@@ -100,7 +100,7 @@ class OpenAIHttpClient::HttpClientImpl {
 #ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     std::unique_ptr<httplib::SSLClient> client_;
 #else
-    std::unique_ptr<void> client_;  // Placeholder when SSL not available
+    void* client_;  // Placeholder when SSL not available (raw pointer for Windows compatibility)
 #endif
     std::string hostname_;
     std::string basePath_;
