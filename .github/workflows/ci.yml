@@ -6,11 +6,6 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
-  pull_request:
-    paths-ignore:  # Skip CI for documentation changes
-      - '**.md'
-      - 'docs/**'
-      - 'LICENSE'
 
 jobs:
   build-and-test:
