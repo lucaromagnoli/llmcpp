@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, 'feat/**', 'fix/**', 'feature/**', 'bugfix/**' ]
     paths-ignore:  # Skip CI for documentation changes
       - '**.md'
       - 'docs/**'
