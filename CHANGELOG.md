@@ -2,6 +2,19 @@
 
 ## [Unreleased] - Unreleased
 
+
+
+## [1.0.21] - 2025-08-07
+
+### Fixed
+- Windows compilation error with std::unique_ptr<void>
+- remove pull_request triggers to avoid duplicate CI jobs
+- replace std::unique_ptr<void> with proper httplib::Client
+- add Windows dependencies and configure httplib properly
+
+### Other
+- Merge pull request #38 from lucaromagnoli/fix/windows-unique-ptr
+
 ## [1.0.20] - 2025-08-06
 
 ### Fixed
