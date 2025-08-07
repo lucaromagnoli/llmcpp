@@ -7,13 +7,6 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
-  pull_request:
-    branches: [ main, develop ]
-    paths-ignore:  # Skip CI for documentation changes
-      - '**.md'
-      - 'docs/**'
-      - '.github/**'
-      - 'LICENSE'
 
 jobs:
   build-and-test:
