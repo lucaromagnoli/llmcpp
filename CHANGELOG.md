@@ -8,7 +8,6 @@
 - Fixed Windows MSVC compilation error with std::unique_ptr<void>
 - Replaced std::unique_ptr<void> with raw pointer for SSL placeholder
 
-
 ## [1.0.19] - 2025-07-13
 
 ### Added
