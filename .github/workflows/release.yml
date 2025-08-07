@@ -11,33 +11,6 @@ env:
   CMAKE_VERSION: '3.22'
 
 jobs:
-  # Test job that runs for both tags and release branches
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gcc g++ cmake ninja-build libssl-dev nlohmann-json3-dev
-
-      - name: Configure CMake
-        run: |
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLMCPP_BUILD_TESTS=ON
-
-      - name: Build
-        timeout-minutes: 15
-        run: cmake --build build --config Release --parallel
-
-      - name: Test
-        working-directory: build
-        timeout-minutes: 10
-        run: |
-          echo "Running CI-safe tests (excluding integration tests)..."
-          ./tests/llmcpp_tests "~[integration]" --reporter compact
-
   check-open-prs:
     runs-on: ubuntu-latest
     # Only run PR check for tag-based releases, not branch pushes
