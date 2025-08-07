@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*.*.*'  # Triggers on semantic version tags like v1.0.0, v2.1.3
     branches:
-      - 'release/**'  # Also trigger on release branches for testing
+      - main  # Trigger when release branches are merged to main
 
 env:
   CMAKE_VERSION: '3.22'
@@ -15,12 +15,34 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       has_open_prs: ${{ steps.check.outputs.has_open_prs }}
+      skip_release: ${{ steps.extract.outputs.skip_release }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Check if this is a release merge
+        id: extract
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            # This is a tag push, proceed with release
+            echo "skip_release=false" >> $GITHUB_OUTPUT
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            # Check if this is a merge from a release branch
+            COMMIT_MSG=$(git log -1 --pretty=%s)
+            echo "Commit message: $COMMIT_MSG"
+
+            if [[ $COMMIT_MSG =~ Merge.*release/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+              echo "✅ Release merge detected"
+              echo "skip_release=false" >> $GITHUB_OUTPUT
+            else
+              echo "❌ Not a release merge commit, skipping release"
+              echo "skip_release=true" >> $GITHUB_OUTPUT
+            fi
+          fi
+
       - name: Check for open PRs
         id: check
+        if: steps.extract.outputs.skip_release != 'true'
         run: |
           # Check if there are any open PRs targeting main or develop
           OPEN_PRS=$(gh pr list --state open --base main --base develop --json number --jq 'length')
@@ -39,7 +61,7 @@ jobs:
 
   validate-version:
     needs: [check-open-prs]
-    if: needs.check-open-prs.outputs.has_open_prs == 'false'
+    if: needs.check-open-prs.outputs.skip_release != 'true' && needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract.outputs.version }}
@@ -48,15 +70,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Extract version from tag or branch
+      - name: Extract version from tag or merge commit
         id: extract
         run: |
           if [[ $GITHUB_REF == refs/tags/* ]]; then
             # Extract from tag
             VERSION=${GITHUB_REF#refs/tags/v}
-          elif [[ $GITHUB_REF == refs/heads/release/* ]]; then
-            # Extract from release branch name
-            VERSION=${GITHUB_REF#refs/heads/release/v}
+            echo "Extracted version from tag: $VERSION"
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            # Check if this is a merge from a release branch
+            COMMIT_MSG=$(git log -1 --pretty=%s)
+            echo "Commit message: $COMMIT_MSG"
+
+            if [[ $COMMIT_MSG =~ Merge.*release/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+              VERSION="${BASH_REMATCH[1]}"
+              echo "Extracted version from merge commit: $VERSION"
+            else
+              echo "❌ Not a release merge commit, skipping release"
+              echo "skip_release=true" >> $GITHUB_OUTPUT
+              exit 0
+            fi
           else
             echo "❌ Unsupported ref: $GITHUB_REF"
             exit 1
@@ -121,7 +154,7 @@ jobs:
 
   create-release:
     needs: [check-open-prs, validate-version]
-    if: needs.check-open-prs.outputs.has_open_prs == 'false'
+    if: needs.check-open-prs.outputs.skip_release != 'true' && needs.check-open-prs.outputs.has_open_prs == 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
