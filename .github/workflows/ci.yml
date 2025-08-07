@@ -2,11 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop, 'feat/**', 'fix/**', 'feature/**', 'bugfix/**' ]
+    branches: [ main, develop, 'feat/**', 'fix/**', 'feature/**', 'bugfix/**', 'release/**' ]
     paths-ignore:  # Skip CI for documentation changes
       - '**.md'
       - 'docs/**'
-      - '.github/**'
       - 'LICENSE'
   pull_request:
     branches: [ main, develop ]
