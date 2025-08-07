@@ -50,8 +50,10 @@ FetchContent_Declare(
     GIT_TAG v0.15.3
 )
 
-# Configure httplib to use OpenSSL
+# Configure httplib to use OpenSSL and disable unnecessary features
 set(HTTPLIB_USE_OPENSSL ON)
+set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "" FORCE)
+set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "" FORCE)
 
 # Make dependencies available
 FetchContent_MakeAvailable(nlohmann_json httplib)
@@ -94,7 +96,7 @@ target_link_libraries(llmcpp
 
 # Platform-specific libraries
 if(WIN32)
-    target_link_libraries(llmcpp PRIVATE ws2_32 wsock32)
+    target_link_libraries(llmcpp PRIVATE ws2_32 wsock32 crypt32)
 elseif(APPLE)
     target_link_libraries(llmcpp PRIVATE 
         "-framework CoreFoundation" 
