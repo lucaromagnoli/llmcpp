@@ -189,6 +189,8 @@ set(CPACK_SOURCE_IGNORE_FILES
     /\.idea/
     /cmake-build-*/
     /\.clion/
+    /llmcpp-mac-key\.pem
+    .*\.(pem|p12|pfx|key)$
 )
 
 # Platform-specific settings

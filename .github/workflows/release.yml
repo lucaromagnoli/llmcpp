@@ -196,6 +196,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Safety check - ensure no private keys are present
+        run: |
+          echo "Scanning workspace for private key material (*.pem, *.p12, *.pfx, *.key)..."
+          if find . -type f \( -name "*.pem" -o -name "*.p12" -o -name "*.pfx" -o -name "*.key" \) | grep -q .; then
+            echo "❌ Private key-like files found in workspace. Failing job to avoid leaking secrets in release artifacts."
+            find . -type f \( -name "*.pem" -o -name "*.p12" -o -name "*.pfx" -o -name "*.key" \) -print
+            exit 1
+          fi
+          echo "✅ No private key files detected."
+
       - name: Create release summary
         run: |
           echo "## 🎉 Release ${{ needs.validate-version.outputs.version }} Created!" >> $GITHUB_STEP_SUMMARY

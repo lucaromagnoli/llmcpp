@@ -32,7 +32,8 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
     // Minimal structured output schema
     json schema = {{"type", "object"},
                    {"properties", {{"answer", {{"type", "string"}}}}},
-                   {"required", json::array({"answer"})}};
+                   {"required", json::array({"answer"})},
+                   {"additionalProperties", false}};
 
     // Simple input
     auto input = OpenAI::ResponsesInput::fromText("Reply with the word OK.");
@@ -49,7 +50,7 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
             // Tweak reasoning parameters when appropriate
             auto modelEnum = OpenAI::modelFromString(modelName);
             if (isReasoningModel(modelEnum)) {
-                req.reasoningEffort = std::string("low");
+                req.reasoning = json{{"effort", "low"}};
             }
 
             const auto start = steady_clock::now();
