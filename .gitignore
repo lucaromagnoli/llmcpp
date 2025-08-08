@@ -54,3 +54,6 @@ docs/build/
 sample_*
 !tests/sample_*
 response_samples/
+# Never commit signing keys
+llmcpp-mac-key.pem
+
