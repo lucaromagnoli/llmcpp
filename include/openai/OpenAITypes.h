@@ -1025,8 +1025,11 @@ std::string getRecommendedApiForModel(const std::string& model);
 
 // Model lists for different APIs
 const std::vector<std::string> RESPONSES_MODELS = {
-    "gpt-5",       "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",
-    "gpt-image-1", "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
+    "gpt-5",       "gpt-5-mini",          "gpt-5-nano",
+    "gpt-4o",      "gpt-4o-mini",
+    "gpt-4.1",     "gpt-4.1-nano",       "gpt-4.1-mini",
+    "gpt-image-1", "o1",                  "o3-mini",     "o3",
+    "o4-mini",     "computer-use-preview"};
 
 const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo", "gpt-4o",
                                                          "gpt-4o-mini", "gpt-3.5-turbo"};
