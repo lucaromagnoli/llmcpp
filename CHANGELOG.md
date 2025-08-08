@@ -4,6 +4,21 @@
 
 
 
+## [1.0.22] - 2025-08-08
+
+### Added
+- add GPT-5 model support (enum, mappings, responses list); tests cover model and integration stub
+
+### Fixed
+- remove branch restrictions from CI workflow - tests should run everywhere
+- remove pull_request trigger to avoid duplicate expensive builds
+- release workflow should only trigger on merge to main
+
+### Other
+- Merge pull request #39 from lucaromagnoli/release/v1.0.21
+- openai: gpt-5 integration hardening — client auto-polls incomplete responses; remove explicit maxTokens in integration tests; drop manual polling in tests; minor debug output tweaks
+- Merge pull request #40 from lucaromagnoli/feat/gpt5
+
 ## [1.0.21] - 2025-08-07
 
 ### Fixed
