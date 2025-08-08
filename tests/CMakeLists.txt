@@ -34,6 +34,7 @@ set(INTEGRATION_TEST_SOURCES
 add_executable(llmcpp_tests
     ${UNIT_TEST_SOURCES}
     ${INTEGRATION_TEST_SOURCES}
+    bench/benchmark_core.cpp
 )
 
 # Link against the library and test framework
