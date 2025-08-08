@@ -21,6 +21,11 @@ static bool isExcludedModel(const std::string &modelName) {
     return modelName == "gpt-image-1" || modelName == "computer-use-preview";
 }
 
+static bool isGpt5Family(OpenAI::Model model) {
+    return model == OpenAI::Model::GPT_5 || model == OpenAI::Model::GPT_5_Mini ||
+           model == OpenAI::Model::GPT_5_Nano;
+}
+
 TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration][benchmark]") {
     const char* runBenchEnv = std::getenv("LLMCPP_RUN_BENCHMARKS");
     if (!runBenchEnv || std::string(runBenchEnv) != "1") {
@@ -54,17 +59,17 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
             req.model = modelName;
             req.input = input;
             req.text = OpenAI::TextOutputConfig("bench_schema", schema, true);
-            // Use a small cap for non-reasoning models to measure latency.
-            // Reasoning models tend to struggle with very low caps, so give them more room.
-            {
-                int cap = 16;
-                auto modelEnum = OpenAI::modelFromString(modelName);
-                if (isReasoningModel(modelEnum)) cap = 128;
+            // Token cap logic:
+            // - For GPT-5 family: do NOT set max_output_tokens (let server decide)
+            // - For reasoning O-series: use a higher cap (128)
+            // - For others: small cap (16) to focus on latency
+            auto modelEnum = OpenAI::modelFromString(modelName);
+            if (!isGpt5Family(modelEnum)) {
+                int cap = isReasoningModel(modelEnum) ? 128 : 16;
                 req.maxOutputTokens = cap;
             }
 
             // Tweak reasoning parameters when appropriate
-            auto modelEnum = OpenAI::modelFromString(modelName);
             if (isReasoningModel(modelEnum)) {
                 req.reasoning = json{{"effort", "low"}};
             }
