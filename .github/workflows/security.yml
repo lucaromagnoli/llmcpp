@@ -1,0 +1,91 @@
+name: Security
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  pull_request:
+    branches: ["**"]
+  schedule:
+    - cron: '0 3 * * 1'  # Weekly, Mondays at 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  secret-file-guard:
+    name: Secret file guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if private key-like files present
+        run: |
+          echo "Scanning workspace for private key material (*.pem, *.p12, *.pfx, *.key)..."
+          if find . -type f \( -name "*.pem" -o -name "*.p12" -o -name "*.pfx" -o -name "*.key" \) | grep -q .; then
+            echo "❌ Private key-like files found in workspace."
+            find . -type f \( -name "*.pem" -o -name "*.p12" -o -name "*.pfx" -o -name "*.key" \) -print
+            exit 1
+          fi
+          echo "✅ No private key files detected."
+
+  codeql:
+    name: CodeQL (C/C++)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: cpp
+
+      - name: Configure build
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLMCPP_BUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  gitleaks:
+    name: Gitleaks (Secret scanning)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          args: --no-git -v --report-format sarif --report-path gitleaks.sarif
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
+
+  dependency-review:
+    name: Dependency Review (PRs)
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: true
+
+
