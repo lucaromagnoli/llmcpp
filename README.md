@@ -132,6 +132,7 @@ auto response2 = client.sendRequest(OpenAI::Model::GPT_4_1_Mini, "Summarize this
 ```
 
 **Available models:**
+- GPT_5, GPT_5_Mini, GPT_5_Nano
 - O3, O3_Mini
 - O1, O1_Mini, O1_Preview, O1_Pro
 - O4_Mini, O4_Mini_Deep_Research
@@ -307,6 +308,9 @@ The library provides type-safe model selection using the `OpenAI::Model` enum:
 
 ```cpp
 // Available model enums
+OpenAI::Model::GPT_5          // gpt-5 - Next-generation model (reasoning)
+OpenAI::Model::GPT_5_Mini     // gpt-5-mini - Cost-effective GPT-5
+OpenAI::Model::GPT_5_Nano     // gpt-5-nano - Fastest GPT-5
 OpenAI::Model::GPT_4_1        // gpt-4.1 - Latest model with superior coding and structured outputs
 OpenAI::Model::GPT_4_1_Mini   // gpt-4.1-mini - Balanced performance and cost
 OpenAI::Model::GPT_4_1_Nano   // gpt-4.1-nano - Fastest and cheapest option
