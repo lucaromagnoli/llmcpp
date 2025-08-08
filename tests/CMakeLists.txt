@@ -28,6 +28,7 @@ set(UNIT_TEST_SOURCES
 set(INTEGRATION_TEST_SOURCES
     integration/test_simple_integration.cpp
     integration/test_openai_integration.cpp  # Re-enabling to check errors
+    integration/test_benchmarks.cpp
 )
 
 # Create test executable with all tests

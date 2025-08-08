@@ -132,6 +132,7 @@ auto response2 = client.sendRequest(OpenAI::Model::GPT_4_1_Mini, "Summarize this
 ```
 
 **Available models:**
+- GPT_5, GPT_5_Mini, GPT_5_Nano
 - O3, O3_Mini
 - O1, O1_Mini, O1_Preview, O1_Pro
 - O4_Mini, O4_Mini_Deep_Research
@@ -307,14 +308,25 @@ The library provides type-safe model selection using the `OpenAI::Model` enum:
 
 ```cpp
 // Available model enums
-OpenAI::Model::GPT_4_1        // gpt-4.1 - Latest model with superior coding and structured outputs
-OpenAI::Model::GPT_4_1_Mini   // gpt-4.1-mini - Balanced performance and cost
-OpenAI::Model::GPT_4_1_Nano   // gpt-4.1-nano - Fastest and cheapest option
-OpenAI::Model::GPT_4o         // gpt-4o - Good balance of performance and cost
-OpenAI::Model::GPT_4o_Mini    // gpt-4o-mini - Cost-effective for basic tasks
-OpenAI::Model::GPT_4_5        // gpt-4.5 - Preview model (deprecated July 2025)
-OpenAI::Model::GPT_3_5_Turbo  // gpt-3.5-turbo - Legacy model
-OpenAI::Model::Custom         // For custom model names
+OpenAI::Model::GPT_5                    // gpt-5 - Next-generation model
+OpenAI::Model::GPT_5_Mini               // gpt-5-mini - Smaller, cost-effective variant
+OpenAI::Model::GPT_5_Nano               // gpt-5-nano - Fastest and cheapest GPT-5 variant
+OpenAI::Model::O3                       // o3 - Latest reasoning model
+OpenAI::Model::O3_Mini                  // o3-mini - Cost-effective reasoning model
+OpenAI::Model::O1                       // o1 - Advanced reasoning model
+OpenAI::Model::O1_Mini                  // o1-mini - Cost-effective O1 model
+OpenAI::Model::O1_Preview               // o1-preview - Preview version
+OpenAI::Model::O1_Pro                   // o1-pro - Professional version
+OpenAI::Model::O4_Mini                  // o4-mini - Latest mini model
+OpenAI::Model::O4_Mini_Deep_Research    // o4-mini-deep-research - Research focused
+OpenAI::Model::GPT_4_1                  // gpt-4.1 - Latest model with superior coding and structured outputs
+OpenAI::Model::GPT_4_1_Mini             // gpt-4.1-mini - Balanced performance and cost
+OpenAI::Model::GPT_4_1_Nano             // gpt-4.1-nano - Fastest and cheapest option
+OpenAI::Model::GPT_4o                   // gpt-4o - Good balance of performance and cost
+OpenAI::Model::GPT_4o_Mini              // gpt-4o-mini - Cost-effective for basic tasks
+OpenAI::Model::GPT_4_5                  // gpt-4.5 - Preview model (deprecated July 2025)
+OpenAI::Model::GPT_3_5_Turbo            // gpt-3.5-turbo - Legacy model
+OpenAI::Model::Custom                   // For custom model names
 ```
 
 #### Model Selection Helpers

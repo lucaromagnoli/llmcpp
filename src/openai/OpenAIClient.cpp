@@ -175,7 +175,7 @@ OpenAI::ResponsesResponse OpenAIClient::sendResponsesRequest(
         try {
             // Reasonable defaults: wait up to 90s, polling every 2s
             response = responsesApi_->waitForCompletion(response.id, /*timeoutSeconds=*/90,
-                                                       /*pollIntervalSeconds=*/2);
+                                                        /*pollIntervalSeconds=*/2);
         } catch (const std::exception& /*e*/) {
             // Fall through and return the last known response (likely non-completed)
         }
@@ -352,7 +352,8 @@ OpenAI::Model OpenAIClient::stringToModel(const std::string& modelStr) {
 }
 
 std::vector<OpenAI::Model> OpenAIClient::getAvailableModelEnums() {
-    return {OpenAI::Model::GPT_5,        OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini,
-            OpenAI::Model::GPT_4_1_Nano, OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,
-            OpenAI::Model::GPT_4_5,      OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
+    return {OpenAI::Model::GPT_5,         OpenAI::Model::GPT_5_Mini,   OpenAI::Model::GPT_5_Nano,
+            OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini, OpenAI::Model::GPT_4_1_Nano,
+            OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,  OpenAI::Model::GPT_4_5,
+            OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
 }
