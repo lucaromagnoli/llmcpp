@@ -59,15 +59,8 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
             req.model = modelName;
             req.input = input;
             req.text = OpenAI::TextOutputConfig("bench_schema", schema, true);
-            // Token cap logic:
-            // - For GPT-5 family: do NOT set max_output_tokens (let server decide)
-            // - For reasoning O-series: use a higher cap (128)
-            // - For others: small cap (16) to focus on latency
+            // Do not set max_output_tokens at all; let the server decide for all models
             auto modelEnum = OpenAI::modelFromString(modelName);
-            if (!isGpt5Family(modelEnum)) {
-                int cap = isReasoningModel(modelEnum) ? 128 : 16;
-                req.maxOutputTokens = cap;
-            }
 
             // Tweak reasoning parameters when appropriate
             if (isReasoningModel(modelEnum)) {
@@ -80,7 +73,11 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
 
             const auto elapsedMs = duration_cast<milliseconds>(end - start).count();
             const bool ok = (response.isCompleted() && !response.hasError());
-            std::cout << modelName << "," << elapsedMs << "," << (ok ? "ok" : "fail") << std::endl;
+            int inTok = response.usage.inputTokens;
+            int outTok = response.usage.outputTokens;
+            int totalTok = inTok + outTok;
+            std::cout << modelName << "," << elapsedMs << "," << (ok ? "ok" : "fail")
+                      << "," << inTok << "," << outTok << "," << totalTok << std::endl;
 
             // Sanity: we should at least get a response object back; don't assert success to avoid
             // flakes

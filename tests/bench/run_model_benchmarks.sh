@@ -23,7 +23,7 @@ build_dir=cmake-build-bench
 cmake -S . -B "$build_dir" -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLMCPP_BUILD_TESTS=ON >/dev/null
 cmake --build "$build_dir" -j >/dev/null
 
-echo "model,ms,status"
+echo "model,ms,status,input_tokens,output_tokens,total_tokens"
 LLMCPP_RUN_BENCHMARKS=1 "$build_dir"/tests/llmcpp_tests "[openai][integration][benchmark]" --reporter compact 2>/dev/null |
   awk -F, '/^gpt|^o[13]-|^o4-mini/ { print $0 }'
 
