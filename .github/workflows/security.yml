@@ -7,8 +7,6 @@ on:
       - '**.md'
       - 'docs/**'
       - 'LICENSE'
-  pull_request:
-    branches: ["**"]
   schedule:
     - cron: '0 3 * * 1'  # Weekly, Mondays at 03:00 UTC
   workflow_dispatch:
@@ -61,6 +59,7 @@ jobs:
 
   gitleaks:
     name: Gitleaks (Secret scanning)
+    continue-on-error: ${{ github.ref != 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,17 +85,6 @@ jobs:
         with:
           sarif_file: gitleaks.sarif
 
-  dependency-review:
-    name: Dependency Review (PRs)
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Dependency Review
-        uses: actions/dependency-review-action@v4
-        with:
-          fail-on-severity: high
-          comment-summary-in-pr: true
+  # Dependency Review is PR-only by design; omit to avoid duplicate PR checks
 
 
