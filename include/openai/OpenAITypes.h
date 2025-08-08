@@ -17,6 +17,9 @@ namespace OpenAI {
  * Provides type safety and IDE auto-completion for model selection
  */
 enum class Model {
+    // GPT-5 series (Latest - 2025)
+    GPT_5,  // gpt-5 - Next-generation model
+
     // O3 series (Latest - 2025)
     O3,       // o3 - Latest reasoning model
     O3_Mini,  // o3-mini - Cost-effective reasoning model
@@ -56,6 +59,8 @@ enum class Model {
  */
 inline std::string toString(Model model) {
     switch (model) {
+        case Model::GPT_5:
+            return "gpt-5";
         case Model::O3:
             return "o3";
         case Model::O3_Mini:
@@ -96,6 +101,7 @@ inline std::string toString(Model model) {
  * Convert API string to OpenAI Model enum
  */
 inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "gpt-5") return Model::GPT_5;
     if (modelStr == "o3") return Model::O3;
     if (modelStr == "o3-mini") return Model::O3_Mini;
     if (modelStr == "o1") return Model::O1;
@@ -119,6 +125,7 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline bool supportsStructuredOutputs(Model model) {
     switch (model) {
+        case Model::GPT_5:
         case Model::O3:
         case Model::O3_Mini:
         case Model::O1:
@@ -1004,8 +1011,8 @@ std::string getRecommendedApiForModel(const std::string& model);
 
 // Model lists for different APIs
 const std::vector<std::string> RESPONSES_MODELS = {
-    "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",        "gpt-image-1",
-    "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
+    "gpt-5",       "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",
+    "gpt-image-1", "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
 
 const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo", "gpt-4o",
                                                          "gpt-4o-mini", "gpt-3.5-turbo"};
