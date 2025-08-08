@@ -17,6 +17,9 @@ namespace OpenAI {
  * Provides type safety and IDE auto-completion for model selection
  */
 enum class Model {
+    // GPT-5 series (Latest - 2025)
+    GPT_5,  // gpt-5 - Next-generation model
+
     // O3 series (Latest - 2025)
     O3,       // o3 - Latest reasoning model
     O3_Mini,  // o3-mini - Cost-effective reasoning model
@@ -56,6 +59,8 @@ enum class Model {
  */
 inline std::string toString(Model model) {
     switch (model) {
+        case Model::GPT_5:
+            return "gpt-5";
         case Model::O3:
             return "o3";
         case Model::O3_Mini:
@@ -96,6 +101,7 @@ inline std::string toString(Model model) {
  * Convert API string to OpenAI Model enum
  */
 inline Model modelFromString(const std::string& modelStr) {
+    if (modelStr == "gpt-5") return Model::GPT_5;
     if (modelStr == "o3") return Model::O3;
     if (modelStr == "o3-mini") return Model::O3_Mini;
     if (modelStr == "o1") return Model::O1;
@@ -119,6 +125,7 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline bool supportsStructuredOutputs(Model model) {
     switch (model) {
+        case Model::GPT_5:
         case Model::O3:
         case Model::O3_Mini:
         case Model::O1:
@@ -592,7 +599,7 @@ struct McpApprovalResponse {
 };
 
 // Response status enumeration
-enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled };
+enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled, Incomplete };
 
 inline std::string toString(ResponseStatus status) {
     switch (status) {
@@ -606,6 +613,8 @@ inline std::string toString(ResponseStatus status) {
             return "failed";
         case ResponseStatus::Cancelled:
             return "cancelled";
+        case ResponseStatus::Incomplete:
+            return "incomplete";
     }
     return "";
 }
@@ -616,6 +625,7 @@ inline ResponseStatus responseStatusFromString(const std::string& str) {
     if (str == "completed") return ResponseStatus::Completed;
     if (str == "failed") return ResponseStatus::Failed;
     if (str == "cancelled") return ResponseStatus::Cancelled;
+    if (str == "incomplete") return ResponseStatus::Incomplete;
     throw std::invalid_argument("Invalid response status: " + str);
 }
 
@@ -656,11 +666,11 @@ struct ResponsesRequest {
         // Convert model string to enum for easier checking
         auto modelEnum = modelFromString(model);
 
-        // Reasoning models (O-series) have different parameter support
-        if (modelEnum == Model::O3 || modelEnum == Model::O3_Mini || modelEnum == Model::O1 ||
-            modelEnum == Model::O1_Mini || modelEnum == Model::O1_Preview ||
-            modelEnum == Model::O1_Pro || modelEnum == Model::O4_Mini ||
-            modelEnum == Model::O4_Mini_Deep_Research) {
+        // Reasoning models (O-series + GPT-5) have different parameter support
+        if (modelEnum == Model::GPT_5 || modelEnum == Model::O3 || modelEnum == Model::O3_Mini ||
+            modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
+            modelEnum == Model::O1_Preview || modelEnum == Model::O1_Pro ||
+            modelEnum == Model::O4_Mini || modelEnum == Model::O4_Mini_Deep_Research) {
             // Parameters NOT supported by reasoning models
             if (paramName == "temperature" || paramName == "top_p" || paramName == "top_logprobs" ||
                 paramName == "truncation") {
@@ -1004,8 +1014,8 @@ std::string getRecommendedApiForModel(const std::string& model);
 
 // Model lists for different APIs
 const std::vector<std::string> RESPONSES_MODELS = {
-    "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",        "gpt-image-1",
-    "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
+    "gpt-5",       "gpt-4o", "gpt-4o-mini", "gpt-4.1", "gpt-4.1-nano", "gpt-4.1-mini",
+    "gpt-image-1", "o1",     "o3-mini",     "o3",      "o4-mini",      "computer-use-preview"};
 
 const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo", "gpt-4o",
                                                          "gpt-4o-mini", "gpt-3.5-turbo"};
@@ -1029,21 +1039,38 @@ inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& reque
     if (!request.context.empty()) {
         // Convert context (vector of json) to InputMessages
         std::vector<InputMessage> messages;
+
         for (const auto& contextItem : request.context) {
+            // Case 1: Single JSON object with role/content
             if (contextItem.is_object() && contextItem.contains("role") &&
                 contextItem.contains("content")) {
                 InputMessage msg;
                 msg.role = InputMessage::stringToRole(contextItem["role"].get<std::string>());
                 msg.content = contextItem["content"].get<std::string>();
                 messages.push_back(msg);
-            } else {
-                // If it's not a proper message format, treat as user message
-                InputMessage msg;
-                msg.role = InputMessage::Role::User;
-                msg.content = contextItem.dump();
-                messages.push_back(msg);
+                continue;
             }
+
+            // Case 2: Array of message-like objects [{role, content}, ...]
+            if (contextItem.is_array()) {
+                for (const auto& item : contextItem) {
+                    if (item.is_object() && item.contains("role") && item.contains("content")) {
+                        InputMessage msg;
+                        msg.role = InputMessage::stringToRole(item["role"].get<std::string>());
+                        msg.content = item["content"].get<std::string>();
+                        messages.push_back(msg);
+                    }
+                }
+                continue;
+            }
+
+            // Fallback: stringify unknown item as a user message
+            InputMessage msg;
+            msg.role = InputMessage::Role::User;
+            msg.content = contextItem.dump();
+            messages.push_back(msg);
         }
+
         responsesReq.input = ResponsesInput::fromContentList(messages);
     } else if (!request.prompt.empty()) {
         // If context is empty but prompt is present, use prompt as input

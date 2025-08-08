@@ -108,7 +108,6 @@ class OpenAIHttpClient::HttpClientImpl {
     httplib::Headers buildHeaders() const {
         httplib::Headers headers;
         headers.emplace("Authorization", "Bearer " + config_.apiKey);
-        headers.emplace("Content-Type", "application/json");
         headers.emplace("User-Agent", "llmcpp/1.0.0");
 
         if (!config_.organization.empty()) {
@@ -254,7 +253,6 @@ std::unordered_map<std::string, std::string> OpenAIHttpClient::buildHeaders(
     const json& requestBody [[maybe_unused]]) const {
     std::unordered_map<std::string, std::string> headers;
     headers["Authorization"] = "Bearer " + config_.apiKey;
-    headers["Content-Type"] = "application/json";
     headers["User-Agent"] = userAgent_;
 
     if (!config_.organization.empty()) {

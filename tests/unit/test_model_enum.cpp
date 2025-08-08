@@ -5,6 +5,7 @@
 
 TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
     SECTION("Model enum to string conversion") {
+        REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_5) == "gpt-5");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_1) == "gpt-4.1");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_1_Mini) == "gpt-4.1-mini");
         REQUIRE(OpenAIClient::modelToString(OpenAI::Model::GPT_4_1_Nano) == "gpt-4.1-nano");
@@ -16,6 +17,7 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
     }
 
     SECTION("String to Model enum conversion") {
+        REQUIRE(OpenAIClient::stringToModel("gpt-5") == OpenAI::Model::GPT_5);
         REQUIRE(OpenAIClient::stringToModel("gpt-4.1") == OpenAI::Model::GPT_4_1);
         REQUIRE(OpenAIClient::stringToModel("gpt-4.1-mini") == OpenAI::Model::GPT_4_1_Mini);
         REQUIRE(OpenAIClient::stringToModel("gpt-4.1-nano") == OpenAI::Model::GPT_4_1_Nano);
@@ -29,6 +31,7 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
     SECTION("Model support checking") {
         OpenAIClient client("test-key");
 
+        REQUIRE(client.isModelSupported(OpenAI::Model::GPT_5) == true);
         REQUIRE(client.isModelSupported(OpenAI::Model::GPT_4_1) == true);
         REQUIRE(client.isModelSupported(OpenAI::Model::GPT_4o_Mini) == true);
         REQUIRE(client.isModelSupported(OpenAI::Model::GPT_3_5_Turbo) == true);
@@ -37,9 +40,10 @@ TEST_CASE("OpenAI Model enum functionality", "[openai][model][enum]") {
 
     SECTION("Available model enums") {
         auto models = OpenAIClient::getAvailableModelEnums();
-        REQUIRE(models.size() >= 8);  // Should include all defined models
+        REQUIRE(models.size() >= 9);  // Should include all defined models
 
         // Check that all expected models are present
+        REQUIRE(std::find(models.begin(), models.end(), OpenAI::Model::GPT_5) != models.end());
         REQUIRE(std::find(models.begin(), models.end(), OpenAI::Model::GPT_4_1) != models.end());
         REQUIRE(std::find(models.begin(), models.end(), OpenAI::Model::GPT_4_1_Mini) !=
                 models.end());

@@ -34,6 +34,20 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
         // Parse the JSON response
         json responseJson = json::parse(httpResponse.body);
 
+        // Extra debug for GPT-5 incomplete
+        try {
+            auto model = OpenAI::safeGetRequiredJson<std::string>(responseJson, "model");
+            auto status = OpenAI::safeGetJson(responseJson, "status", std::string(""));
+            if (model == "gpt-5" && status != "completed") {
+                std::cerr << "⚠️ GPT-5 non-completed status: " << status << std::endl;
+                if (responseJson.contains("incomplete_details")) {
+                    std::cerr << "⚠️ Incomplete details: "
+                              << responseJson["incomplete_details"].dump(2) << std::endl;
+                }
+            }
+        } catch (...) {
+        }
+
         // Check for API errors using safe JSON function
         auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");
         if (error.has_value()) {
@@ -142,7 +156,8 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::waitForCompletion(const std::strin
                                                                 int timeoutSeconds [[maybe_unused]],
                                                                 int pollIntervalSeconds
                                                                 [[maybe_unused]]) {
-    throw std::runtime_error("OpenAIResponsesApi::waitForCompletion not yet implemented");
+    const int maxAttempts = std::max(1, timeoutSeconds / std::max(1, pollIntervalSeconds));
+    return pollForCompletion(responseId, maxAttempts, pollIntervalSeconds);
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIResponsesApi::resumeStreaming(
@@ -399,6 +414,15 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::pollForCompletion(const std::strin
                                                                 int maxAttempts [[maybe_unused]],
                                                                 int intervalSeconds
                                                                 [[maybe_unused]]) {
-    // TODO: Implement polling
-    throw std::runtime_error("OpenAIResponsesApi::pollForCompletion not yet implemented");
+    for (int attempt = 0; attempt < maxAttempts; ++attempt) {
+        auto resp = retrieve(responseId);
+        if (resp.status == OpenAI::ResponseStatus::Completed ||
+            resp.status == OpenAI::ResponseStatus::Failed ||
+            resp.status == OpenAI::ResponseStatus::Cancelled) {
+            return resp;
+        }
+        std::this_thread::sleep_for(std::chrono::seconds(std::max(1, intervalSeconds)));
+    }
+    // Final retrieve before giving up
+    return retrieve(responseId);
 }
