@@ -337,7 +337,7 @@ OpenAI::Model OpenAIClient::stringToModel(const std::string& modelStr) {
 }
 
 std::vector<OpenAI::Model> OpenAIClient::getAvailableModelEnums() {
-    return {OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini, OpenAI::Model::GPT_4_1_Nano,
-            OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,  OpenAI::Model::GPT_4_5,
-            OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
+    return {OpenAI::Model::GPT_5,        OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini,
+            OpenAI::Model::GPT_4_1_Nano, OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,
+            OpenAI::Model::GPT_4_5,      OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
 }

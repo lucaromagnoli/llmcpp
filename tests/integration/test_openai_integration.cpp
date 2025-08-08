@@ -112,6 +112,37 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
             std::cout << "Output: " << response.result["text"].get<std::string>() << std::endl;
         }
     }
+
+    SECTION("Basic text completion with gpt-5 (if available)") {
+        OpenAIClient client(apiKey);
+
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-5";  // Try GPT-5
+        config.maxTokens = 50;
+        config.temperature = 0.1f;  // Low temperature for predictable results
+
+        json context = json::array({json{{"role", "user"}, {"content", "What is 5+7?"}}});
+
+        LLMRequest request(config, "You are a math assistant. Answer with just the number.",
+                           context);
+
+        std::cout << "Making API call to OpenAI (gpt-5)..." << std::endl;
+        auto response = client.sendRequest(request);
+
+        // If the model isn't available on the account, allow graceful failure
+        if (!response.success && (response.errorMessage.find("model") != std::string::npos)) {
+            SKIP("gpt-5 not available on this account");
+        }
+
+        REQUIRE(response.success == true);
+        REQUIRE(response.errorMessage.empty());
+        REQUIRE(!response.responseId.empty());
+        REQUIRE(response.usage.inputTokens > 0);
+        REQUIRE(response.usage.outputTokens > 0);
+
+        REQUIRE((response.result.contains("text") || response.result.contains("choices")));
+    }
 }
 
 TEST_CASE("OpenAI Integration - Async request", "[openai][integration][manual]") {
