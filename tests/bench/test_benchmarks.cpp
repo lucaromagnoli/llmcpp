@@ -17,6 +17,10 @@ static bool isReasoningModel(OpenAI::Model model) {
            model == OpenAI::Model::O1_Pro || model == OpenAI::Model::O4_Mini;
 }
 
+static bool isExcludedModel(const std::string &modelName) {
+    return modelName == "gpt-image-1" || modelName == "computer-use-preview";
+}
+
 TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration][benchmark]") {
     const char* runBenchEnv = std::getenv("LLMCPP_RUN_BENCHMARKS");
     if (!runBenchEnv || std::string(runBenchEnv) != "1") {
@@ -35,17 +39,29 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
                    {"required", json::array({"answer"})},
                    {"additionalProperties", false}};
 
-    // Simple input
-    auto input = OpenAI::ResponsesInput::fromText("Reply with the word OK.");
+    // Simple input aligned with structured output requirement
+    auto input = OpenAI::ResponsesInput::fromText(
+        "Return a JSON object that conforms to the provided schema with answer set to 'OK'.");
 
     // Iterate through response-capable models
     for (const auto& modelName : OpenAI::RESPONSES_MODELS) {
+        if (isExcludedModel(modelName)) {
+            std::cout << "[BENCH] skipping model=" << modelName << " (not supported for JSON schema bench)" << std::endl;
+            continue;
+        }
         DYNAMIC_SECTION("Benchmark model: " << modelName) {
             OpenAI::ResponsesRequest req;
             req.model = modelName;
             req.input = input;
             req.text = OpenAI::TextOutputConfig("bench_schema", schema, true);
-            req.maxOutputTokens = 16;
+            // Use a small cap for non-reasoning models to measure latency.
+            // Reasoning models tend to struggle with very low caps, so give them more room.
+            {
+                int cap = 16;
+                auto modelEnum = OpenAI::modelFromString(modelName);
+                if (isReasoningModel(modelEnum)) cap = 128;
+                req.maxOutputTokens = cap;
+            }
 
             // Tweak reasoning parameters when appropriate
             auto modelEnum = OpenAI::modelFromString(modelName);
@@ -58,9 +74,8 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
             const auto end = steady_clock::now();
 
             const auto elapsedMs = duration_cast<milliseconds>(end - start).count();
-            std::cout << "[BENCH] model=" << modelName << ", ms=" << elapsedMs
-                      << ", success=" << (response.isCompleted() && !response.hasError())
-                      << std::endl;
+            const bool ok = (response.isCompleted() && !response.hasError());
+            std::cout << modelName << "," << elapsedMs << "," << (ok ? "ok" : "fail") << std::endl;
 
             // Sanity: we should at least get a response object back; don't assert success to avoid
             // flakes

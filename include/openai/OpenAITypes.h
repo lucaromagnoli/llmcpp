@@ -677,7 +677,8 @@ struct ResponsesRequest {
         auto modelEnum = modelFromString(model);
 
         // Reasoning models (O-series + GPT-5) have different parameter support
-        if (modelEnum == Model::GPT_5 || modelEnum == Model::O3 || modelEnum == Model::O3_Mini ||
+        if (modelEnum == Model::GPT_5 || modelEnum == Model::GPT_5_Mini ||
+            modelEnum == Model::GPT_5_Nano || modelEnum == Model::O3 || modelEnum == Model::O3_Mini ||
             modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
             modelEnum == Model::O1_Preview || modelEnum == Model::O1_Pro ||
             modelEnum == Model::O4_Mini || modelEnum == Model::O4_Mini_Deep_Research) {
