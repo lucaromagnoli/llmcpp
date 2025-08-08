@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/.."
+# Resolve repo root (prefer git); fallback to two levels up from this script
+if repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+  :
+else
+  script_dir="$(cd "$(dirname "$0")" && pwd)"
+  repo_root="$(cd "$script_dir/../.." && pwd)"
+fi
 
+cd "$repo_root"
+
+# Load API key from .env if present
 if [[ ! -f .env && -z "${OPENAI_API_KEY:-}" ]]; then
   echo "ERROR: OPENAI_API_KEY not set and .env missing." >&2
   exit 1
 fi
-
 # shellcheck disable=SC1091
 set -a && source .env 2>/dev/null || true && set +a
 
