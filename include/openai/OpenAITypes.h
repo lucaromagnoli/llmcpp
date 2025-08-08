@@ -599,7 +599,7 @@ struct McpApprovalResponse {
 };
 
 // Response status enumeration
-enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled };
+enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled, Incomplete };
 
 inline std::string toString(ResponseStatus status) {
     switch (status) {
@@ -613,6 +613,8 @@ inline std::string toString(ResponseStatus status) {
             return "failed";
         case ResponseStatus::Cancelled:
             return "cancelled";
+        case ResponseStatus::Incomplete:
+            return "incomplete";
     }
     return "";
 }
@@ -623,6 +625,7 @@ inline ResponseStatus responseStatusFromString(const std::string& str) {
     if (str == "completed") return ResponseStatus::Completed;
     if (str == "failed") return ResponseStatus::Failed;
     if (str == "cancelled") return ResponseStatus::Cancelled;
+    if (str == "incomplete") return ResponseStatus::Incomplete;
     throw std::invalid_argument("Invalid response status: " + str);
 }
 
@@ -663,11 +666,11 @@ struct ResponsesRequest {
         // Convert model string to enum for easier checking
         auto modelEnum = modelFromString(model);
 
-        // Reasoning models (O-series) have different parameter support
-        if (modelEnum == Model::O3 || modelEnum == Model::O3_Mini || modelEnum == Model::O1 ||
-            modelEnum == Model::O1_Mini || modelEnum == Model::O1_Preview ||
-            modelEnum == Model::O1_Pro || modelEnum == Model::O4_Mini ||
-            modelEnum == Model::O4_Mini_Deep_Research) {
+        // Reasoning models (O-series + GPT-5) have different parameter support
+        if (modelEnum == Model::GPT_5 || modelEnum == Model::O3 || modelEnum == Model::O3_Mini ||
+            modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
+            modelEnum == Model::O1_Preview || modelEnum == Model::O1_Pro ||
+            modelEnum == Model::O4_Mini || modelEnum == Model::O4_Mini_Deep_Research) {
             // Parameters NOT supported by reasoning models
             if (paramName == "temperature" || paramName == "top_p" || paramName == "top_logprobs" ||
                 paramName == "truncation") {
@@ -1036,21 +1039,38 @@ inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& reque
     if (!request.context.empty()) {
         // Convert context (vector of json) to InputMessages
         std::vector<InputMessage> messages;
+
         for (const auto& contextItem : request.context) {
+            // Case 1: Single JSON object with role/content
             if (contextItem.is_object() && contextItem.contains("role") &&
                 contextItem.contains("content")) {
                 InputMessage msg;
                 msg.role = InputMessage::stringToRole(contextItem["role"].get<std::string>());
                 msg.content = contextItem["content"].get<std::string>();
                 messages.push_back(msg);
-            } else {
-                // If it's not a proper message format, treat as user message
-                InputMessage msg;
-                msg.role = InputMessage::Role::User;
-                msg.content = contextItem.dump();
-                messages.push_back(msg);
+                continue;
             }
+
+            // Case 2: Array of message-like objects [{role, content}, ...]
+            if (contextItem.is_array()) {
+                for (const auto& item : contextItem) {
+                    if (item.is_object() && item.contains("role") && item.contains("content")) {
+                        InputMessage msg;
+                        msg.role = InputMessage::stringToRole(item["role"].get<std::string>());
+                        msg.content = item["content"].get<std::string>();
+                        messages.push_back(msg);
+                    }
+                }
+                continue;
+            }
+
+            // Fallback: stringify unknown item as a user message
+            InputMessage msg;
+            msg.role = InputMessage::Role::User;
+            msg.content = contextItem.dump();
+            messages.push_back(msg);
         }
+
         responsesReq.input = ResponsesInput::fromContentList(messages);
     } else if (!request.prompt.empty()) {
         // If context is empty but prompt is present, use prompt as input
