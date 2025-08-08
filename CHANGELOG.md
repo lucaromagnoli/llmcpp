@@ -4,6 +4,33 @@
 
 
 
+## [1.0.23] - 2025-08-08
+
+### Documentation
+- add GPT-5 mini/nano; usage note for reasoning effort; enums updated
+
+### Build
+- add CodeQL, gitleaks, dependency review, and secret-file guard
+- switch to manual gitleaks invocation; set GITHUB_TOKEN; ensure SARIF path exists
+- trigger only on push/schedule; drop PR triggers; make gitleaks non-blocking off main
+
+### Maintenance
+- v1.0.23
+
+### Other
+- Merge pull request #41 from lucaromagnoli/release/v1.0.22
+- tests(bench): add model-comparison integration benchmark and internal microbenchmarks
+- Merge pull request #45 from lucaromagnoli/ci/security-workflow
+- Merge pull request #46 from lucaromagnoli/docs/readme-gpt5
+- tests(bench): add test_benchmarks.cpp to the test suite and remove obsolete integration benchmark file
+- bench: exclude unsupported models; boost caps for reasoning models; add run_model_benchmarks.sh; CSV output
+- bench: move run_model_benchmarks.sh under tests/bench
+- bench: mark run_model_benchmarks.sh executable
+- bench: avoid max_output_tokens for GPT-5 family; keep caps for others
+- bench: include token usage (input/output/total) in CSV output
+- models: add gpt-5-mini and gpt-5-nano to RESPONSES_MODELS list
+- Merge pull request #47 from lucaromagnoli/feat/model-benchmarks
+
 ## [1.0.22] - 2025-08-08
 
 ### Added
