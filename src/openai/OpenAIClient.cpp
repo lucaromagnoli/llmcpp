@@ -166,7 +166,22 @@ OpenAI::ResponsesResponse OpenAIClient::sendResponsesRequest(
         throw std::invalid_argument("Invalid request: " + errorMessage);
     }
 
-    return responsesApi_->create(request);
+    // Create initial response
+    auto response = responsesApi_->create(request);
+
+    // If the model returns a non-completed status (e.g., queued/in_progress/incomplete),
+    // poll until completion or failure. This particularly affects reasoning models like GPT-5.
+    if (!response.isCompleted() && !response.id.empty()) {
+        try {
+            // Reasonable defaults: wait up to 90s, polling every 2s
+            response = responsesApi_->waitForCompletion(response.id, /*timeoutSeconds=*/90,
+                                                       /*pollIntervalSeconds=*/2);
+        } catch (const std::exception& /*e*/) {
+            // Fall through and return the last known response (likely non-completed)
+        }
+    }
+
+    return response;
 }
 
 std::future<OpenAI::ResponsesResponse> OpenAIClient::sendResponsesRequestAsync(
@@ -337,7 +352,7 @@ OpenAI::Model OpenAIClient::stringToModel(const std::string& modelStr) {
 }
 
 std::vector<OpenAI::Model> OpenAIClient::getAvailableModelEnums() {
-    return {OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini, OpenAI::Model::GPT_4_1_Nano,
-            OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,  OpenAI::Model::GPT_4_5,
-            OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
+    return {OpenAI::Model::GPT_5,        OpenAI::Model::GPT_4_1,       OpenAI::Model::GPT_4_1_Mini,
+            OpenAI::Model::GPT_4_1_Nano, OpenAI::Model::GPT_4o,        OpenAI::Model::GPT_4o_Mini,
+            OpenAI::Model::GPT_4_5,      OpenAI::Model::GPT_3_5_Turbo, OpenAI::Model::Custom};
 }

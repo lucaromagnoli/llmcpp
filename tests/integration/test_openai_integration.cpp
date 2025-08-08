@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <chrono>
+#include <thread>
 
 #include "core/ClientManager.h"
 #include "core/LLMTypes.h"
@@ -84,7 +86,6 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
         LLMRequestConfig config;
         config.client = "openai";
         config.model = "gpt-4o-mini";  // Cheaper model for testing
-        config.maxTokens = 50;
         config.temperature = 0.1f;  // Low temperature for predictable results
 
         json context = json::array({json{{"role", "user"}, {"content", "What is 2+2?"}}});
@@ -94,7 +95,6 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
 
         std::cout << "Making API call to OpenAI..." << std::endl;
         auto response = client.sendRequest(request);
-
         REQUIRE(response.success == true);
         REQUIRE(response.errorMessage.empty());
         REQUIRE(!response.responseId.empty());
@@ -111,6 +111,95 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
         if (response.result.contains("text")) {
             std::cout << "Output: " << response.result["text"].get<std::string>() << std::endl;
         }
+    }
+
+    SECTION("Basic text completion with gpt-5 (no temperature, reasoning)") {
+        OpenAIClient client(apiKey);
+
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-5";  // Try GPT-5
+        // Do not set temperature; GPT-5 treated as reasoning model
+
+        json context = json::array({json{{"role", "user"}, {"content", "What is 5+7?"}}});
+
+        LLMRequest request(config, "You are a math assistant. Answer with just the number.",
+                           context);
+
+        std::cout << "Making API call to OpenAI (gpt-5)..." << std::endl;
+        auto response = client.sendRequest(request);
+        if (!response.success) {
+            std::cout << "❌ GPT-5 request failed. Error: " << response.errorMessage << std::endl;
+            std::cout << "🔎 Full result: " << response.result.dump(2) << std::endl;
+        }
+        REQUIRE(response.success == true);
+        REQUIRE(response.errorMessage.empty());
+        REQUIRE(!response.responseId.empty());
+        REQUIRE(response.usage.inputTokens > 0);
+        REQUIRE(response.usage.outputTokens > 0);
+
+        REQUIRE((response.result.contains("text") || response.result.contains("choices")));
+    }
+
+    SECTION("GPT-5 structured output via Responses API") {
+        OpenAIClient client(apiKey);
+
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-5";  // Reasoning family, omit temperature
+        config.functionName = "sum_two";
+
+        auto schema = OpenAIResponsesSchemaBuilder("sum_two")
+                           .property("result", JsonSchemaBuilder::integer())
+                           .required({"result"})
+                           .additionalProperties(false)
+                           .buildSchema();
+        config.schemaObject = schema;
+
+        json context = json::array({json{{"role", "user"}, {"content", "Return only JSON."}}});
+
+        LLMRequest request(config,
+                           "Sum 5 and 7. Respond only with the sum_two JSON: {\\\"result\\\": 12}.",
+                           context);
+
+        std::cout << "Making structured API call to OpenAI (gpt-5)..." << std::endl;
+        auto response = client.sendRequest(request);
+        if (!response.success) {
+            std::cout << "❌ GPT-5 structured request failed. Error: " << response.errorMessage
+                      << std::endl;
+            std::cout << "🔎 Full result: " << response.result.dump(2) << std::endl;
+        }
+        REQUIRE(response.success == true);
+        REQUIRE(!response.responseId.empty());
+        REQUIRE(response.result.contains("text"));
+
+        auto text = response.result["text"].get<std::string>();
+        auto parsed = json::parse(text);
+        REQUIRE(parsed.contains("result"));
+        REQUIRE(parsed["result"].is_number());
+        REQUIRE(parsed["result"].get<int>() == 12);
+    }
+
+    SECTION("GPT-5 should not fail authentication with valid key") {
+        OpenAIClient client(apiKey);
+
+        LLMRequestConfig config;
+        config.client = "openai";
+        config.model = "gpt-5";  // Reasoning family
+
+        LLMRequest request(config, "Say OK");
+
+        std::cout << "Auth check call to GPT-5..." << std::endl;
+        auto response = client.sendRequest(request);
+        if (!response.success) {
+            // If we ever get invalid_api_key here, make it explicit
+            bool invalidKey = response.errorMessage.find("invalid_api_key") != std::string::npos ||
+                              response.errorMessage.find("Incorrect API key") != std::string::npos;
+            if (invalidKey) {
+                FAIL("Received invalid_api_key from OpenAI for GPT-5 despite OPENAI_API_KEY being set.");
+            }
+        }
+        REQUIRE(response.success == true);
     }
 }
 
