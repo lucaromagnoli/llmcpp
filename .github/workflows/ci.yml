@@ -2,6 +2,8 @@ name: CI
 
 on:
   push:
+    paths-ignore:  # Skip CI for docs directory only
+      - 'docs/**'
 
 jobs:
   build-and-test:
