@@ -213,15 +213,7 @@ struct MessagesRequest {
         MessagesRequest req;
         req.model = request.config.model;
 
-        // Convert main prompt to user message
-        if (!request.prompt.empty()) {
-            Message userMsg;
-            userMsg.role = MessageRole::USER;
-            userMsg.content.push_back({.type = "text", .text = request.prompt});
-            req.messages.push_back(userMsg);
-        }
-
-        // Add context messages if present
+        // Add context messages first (chronological order)
         for (const auto& contextMsg : request.context) {
             Message msg;
             // Check if context message has role and content fields
@@ -237,6 +229,14 @@ struct MessagesRequest {
                 msg.content.push_back({.type = "text", .text = contextMsg["content"]});
                 req.messages.push_back(msg);
             }
+        }
+
+        // Add main prompt as the final user message
+        if (!request.prompt.empty()) {
+            Message userMsg;
+            userMsg.role = MessageRole::USER;
+            userMsg.content.push_back({.type = "text", .text = request.prompt});
+            req.messages.push_back(userMsg);
         }
 
         // Set optional parameters
@@ -308,22 +308,22 @@ struct MessagesResponse {
     static MessagesResponse fromJson(const json& j) {
         MessagesResponse response;
 
-        if (j.contains("id")) {
+        if (j.contains("id") && !j["id"].is_null()) {
             response.id = j["id"];
         }
-        if (j.contains("type")) {
+        if (j.contains("type") && !j["type"].is_null()) {
             response.type = j["type"];
         }
-        if (j.contains("role")) {
+        if (j.contains("role") && !j["role"].is_null()) {
             response.role = j["role"];
         }
-        if (j.contains("model")) {
+        if (j.contains("model") && !j["model"].is_null()) {
             response.model = j["model"];
         }
-        if (j.contains("stop_reason")) {
+        if (j.contains("stop_reason") && !j["stop_reason"].is_null()) {
             response.stopReason = j["stop_reason"];
         }
-        if (j.contains("stop_sequence")) {
+        if (j.contains("stop_sequence") && !j["stop_sequence"].is_null()) {
             response.stopSequence = j["stop_sequence"];
         }
 
