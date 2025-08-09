@@ -4,6 +4,30 @@
 
 
 
+## [1.1.0] - 2025-08-09
+
+### Added
+- Complete Anthropic Claude API integration
+- Add unified OpenAI vs Anthropic benchmark tests
+
+### Fixed
+- Anthropic API integration bug fixes
+
+### Documentation
+- Add comprehensive benchmark analysis to README
+
+### Testing
+- fix Anthropic unit tests to match corrected message ordering
+
+### Build
+- trigger CI workflow
+- remove paths-ignore rule that skips CI on documentation changes
+- refine paths-ignore to only skip docs/ directory
+- skip CI on documentation branches (docs/**)
+
+### Other
+- Merge pull request #50 from lucaromagnoli/feat/anthropic-integration
+
 ## [1.0.23] - 2025-08-08
 
 ### Documentation
