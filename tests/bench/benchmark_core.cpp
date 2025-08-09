@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "openai/OpenAITypes.h"
 
@@ -39,9 +39,7 @@ static ResponsesRequest makeRequest() {
 
 TEST_CASE("Benchmark: ResponsesRequest serialization", "[benchmark]") {
     auto req = makeRequest();
-    BENCHMARK("toJson serialize") {
-        return req.toJson();
-    };
+    BENCHMARK("toJson serialize") { return req.toJson(); };
 }
 
 TEST_CASE("Benchmark: ResponsesResponse parsing", "[benchmark]") {
@@ -58,18 +56,10 @@ TEST_CASE("Benchmark: ResponsesResponse parsing", "[benchmark]") {
         ]
     })");
 
-    BENCHMARK("fromJson parse") {
-        return ResponsesResponse::fromJson(sample);
-    };
+    BENCHMARK("fromJson parse") { return ResponsesResponse::fromJson(sample); };
 }
 
 TEST_CASE("Benchmark: Model enum conversions", "[benchmark]") {
-    BENCHMARK("modelToString") {
-        return toString(Model::GPT_4o);
-    };
-    BENCHMARK("stringToModel") {
-        return modelFromString("gpt-4o");
-    };
+    BENCHMARK("modelToString") { return toString(Model::GPT_4o); };
+    BENCHMARK("stringToModel") { return modelFromString("gpt-4o"); };
 }
-
-

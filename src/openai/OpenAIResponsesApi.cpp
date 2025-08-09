@@ -45,8 +45,7 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
                               << responseJson["incomplete_details"].dump(2) << std::endl;
                 }
             }
-        } catch (...) {
-        }
+        } catch (...) {}
 
         // Check for API errors using safe JSON function
         auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");

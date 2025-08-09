@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
-#include <chrono>
 #include <thread>
 
 #include "core/ClientManager.h"
@@ -86,7 +86,7 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
         LLMRequestConfig config;
         config.client = "openai";
         config.model = "gpt-4o-mini";  // Cheaper model for testing
-        config.temperature = 0.1f;  // Low temperature for predictable results
+        config.temperature = 0.1f;     // Low temperature for predictable results
 
         json context = json::array({json{{"role", "user"}, {"content", "What is 2+2?"}}});
 
@@ -150,10 +150,10 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
         config.functionName = "sum_two";
 
         auto schema = OpenAIResponsesSchemaBuilder("sum_two")
-                           .property("result", JsonSchemaBuilder::integer())
-                           .required({"result"})
-                           .additionalProperties(false)
-                           .buildSchema();
+                          .property("result", JsonSchemaBuilder::integer())
+                          .required({"result"})
+                          .additionalProperties(false)
+                          .buildSchema();
         config.schemaObject = schema;
 
         json context = json::array({json{{"role", "user"}, {"content", "Return only JSON."}}});
@@ -196,7 +196,9 @@ TEST_CASE("OpenAI Integration - Simple text completion", "[openai][integration][
             bool invalidKey = response.errorMessage.find("invalid_api_key") != std::string::npos ||
                               response.errorMessage.find("Incorrect API key") != std::string::npos;
             if (invalidKey) {
-                FAIL("Received invalid_api_key from OpenAI for GPT-5 despite OPENAI_API_KEY being set.");
+                FAIL(
+                    "Received invalid_api_key from OpenAI for GPT-5 despite OPENAI_API_KEY being "
+                    "set.");
             }
         }
         REQUIRE(response.success == true);

@@ -17,7 +17,7 @@ static bool isReasoningModel(OpenAI::Model model) {
            model == OpenAI::Model::O1_Pro || model == OpenAI::Model::O4_Mini;
 }
 
-static bool isExcludedModel(const std::string &modelName) {
+static bool isExcludedModel(const std::string& modelName) {
     return modelName == "gpt-image-1" || modelName == "computer-use-preview";
 }
 
@@ -51,7 +51,8 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
     // Iterate through response-capable models
     for (const auto& modelName : OpenAI::RESPONSES_MODELS) {
         if (isExcludedModel(modelName)) {
-            std::cout << "[BENCH] skipping model=" << modelName << " (not supported for JSON schema bench)" << std::endl;
+            std::cout << "[BENCH] skipping model=" << modelName
+                      << " (not supported for JSON schema bench)" << std::endl;
             continue;
         }
         DYNAMIC_SECTION("Benchmark model: " << modelName) {
@@ -76,8 +77,8 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
             int inTok = response.usage.inputTokens;
             int outTok = response.usage.outputTokens;
             int totalTok = inTok + outTok;
-            std::cout << modelName << "," << elapsedMs << "," << (ok ? "ok" : "fail")
-                      << "," << inTok << "," << outTok << "," << totalTok << std::endl;
+            std::cout << modelName << "," << elapsedMs << "," << (ok ? "ok" : "fail") << ","
+                      << inTok << "," << outTok << "," << totalTok << std::endl;
 
             // Sanity: we should at least get a response object back; don't assert success to avoid
             // flakes

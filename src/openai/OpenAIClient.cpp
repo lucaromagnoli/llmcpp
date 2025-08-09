@@ -175,7 +175,7 @@ OpenAI::ResponsesResponse OpenAIClient::sendResponsesRequest(
         try {
             // Reasonable defaults: wait up to 90s, polling every 2s
             response = responsesApi_->waitForCompletion(response.id, /*timeoutSeconds=*/90,
-                                                       /*pollIntervalSeconds=*/2);
+                                                        /*pollIntervalSeconds=*/2);
         } catch (const std::exception& /*e*/) {
             // Fall through and return the last known response (likely non-completed)
         }

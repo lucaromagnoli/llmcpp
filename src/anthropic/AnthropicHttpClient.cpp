@@ -37,11 +37,19 @@ class AnthropicHttpClient::HttpClientImpl {
 
         host_ = host;
 
-        // Create HTTP client
+        // Create HTTP/HTTPS client
         if (useSSL_) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
             sslClient_ = std::make_unique<httplib::SSLClient>(host_);
             sslClient_->set_read_timeout(config_.timeoutSeconds, 0);
             sslClient_->set_write_timeout(config_.timeoutSeconds, 0);
+#else
+            // Fallback: construct plain HTTP client to allow compilation; will error on request
+            httpClient_ = std::make_unique<httplib::Client>(host_);
+            httpClient_->set_read_timeout(config_.timeoutSeconds, 0);
+            httpClient_->set_write_timeout(config_.timeoutSeconds, 0);
+            sslUnavailable_ = true;
+#endif
         } else {
             httpClient_ = std::make_unique<httplib::Client>(host_);
             httpClient_->set_read_timeout(config_.timeoutSeconds, 0);
@@ -60,7 +68,12 @@ class AnthropicHttpClient::HttpClientImpl {
         // Make the API call
         httplib::Result result;
         if (useSSL_) {
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
             result = sslClient_->Post("/v1/messages", headers, requestBody, "application/json");
+#else
+            throw std::runtime_error(
+                "SSL support not available (OpenSSL>=3 not found at build time)");
+#endif
         } else {
             result = httpClient_->Post("/v1/messages", headers, requestBody, "application/json");
         }
@@ -108,7 +121,10 @@ class AnthropicHttpClient::HttpClientImpl {
     std::string host_;
     bool useSSL_ = true;
     std::unique_ptr<httplib::Client> httpClient_;
+#ifdef CPPHTTPLIB_OPENSSL_SUPPORT
     std::unique_ptr<httplib::SSLClient> sslClient_;
+#endif
+    bool sslUnavailable_ = false;
 };
 
 // AnthropicHttpClient implementation
