@@ -6,6 +6,8 @@
 #include <sstream>
 #include <string>
 
+// Unified benchmark tests for OpenAI and Anthropic models
+
 #include "anthropic/AnthropicClient.h"
 #include "anthropic/AnthropicTypes.h"
 #include "openai/OpenAIClient.h"
