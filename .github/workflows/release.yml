@@ -188,7 +188,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/heads/release/') && format('v{0}', needs.validate-version.outputs.version) || github.ref_name }}
+          tag_name: v${{ needs.validate-version.outputs.version }}
           name: "llmcpp ${{ needs.validate-version.outputs.version }}"
           body: ${{ steps.changelog.outputs.changelog }}
           prerelease: ${{ needs.validate-version.outputs.is_prerelease }}
