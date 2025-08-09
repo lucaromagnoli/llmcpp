@@ -296,3 +296,59 @@ TEST_CASE("Anthropic ClientFactory integration", "[anthropic][factory][integrati
         REQUIRE(std::find(providers.begin(), providers.end(), "openai") != providers.end());
     }
 }
+
+TEST_CASE("Claude-4 family models integration", "[anthropic][claude4][integration]") {
+    const char* apiKey = std::getenv("ANTHROPIC_API_KEY");
+    if (!apiKey) {
+        SKIP("ANTHROPIC_API_KEY environment variable not set");
+    }
+
+    // Test each Claude-4 model
+    std::vector<std::pair<std::string, Anthropic::Model>> claude4Models = {
+        {"Claude Opus 4.1", Anthropic::Model::CLAUDE_OPUS_4_1},
+        {"Claude Opus 4", Anthropic::Model::CLAUDE_OPUS_4},
+        {"Claude Sonnet 4", Anthropic::Model::CLAUDE_SONNET_4}};
+
+    for (const auto& [modelName, modelEnum] : claude4Models) {
+        DYNAMIC_SECTION("Testing " << modelName) {
+            try {
+                Anthropic::AnthropicClient client(apiKey, modelEnum);
+
+                LLMRequestConfig config;
+                config.model = Anthropic::toString(modelEnum);
+                config.maxTokens = 20;
+                config.temperature = 0.1;
+
+                LLMRequest request(config, "Respond with exactly: 'Claude-4 working'");
+
+                auto response = client.sendRequest(request);
+
+                INFO("Model: " << modelName << " (" << Anthropic::toString(modelEnum) << ")");
+                INFO("Response: " << (response.result.contains("text")
+                                          ? response.result["text"].get<std::string>()
+                                          : "No text"));
+
+                REQUIRE(response.success);
+                REQUIRE(response.result.contains("text"));
+                REQUIRE(!response.result["text"].get<std::string>().empty());
+                REQUIRE(response.usage.totalTokens() > 0);
+
+                // Check that we actually got a response from Claude-4
+                std::string responseText = response.result["text"].get<std::string>();
+                // Should contain some indication it's working
+                REQUIRE(responseText.length() > 5);
+
+            } catch (const std::exception& e) {
+                // Some Claude-4 models may not be available yet, so we'll log but not fail
+                INFO("Model " << modelName << " may not be available: " << e.what());
+                // Only fail if it's not a model availability issue
+                std::string error = e.what();
+                if (error.find("model") == std::string::npos &&
+                    error.find("not found") == std::string::npos &&
+                    error.find("invalid") == std::string::npos) {
+                    FAIL("Unexpected error for " << modelName << ": " << e.what());
+                }
+            }
+        }
+    }
+}

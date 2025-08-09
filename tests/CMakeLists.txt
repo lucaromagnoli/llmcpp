@@ -39,6 +39,7 @@ add_executable(llmcpp_tests
     bench/benchmark_core.cpp
     bench/test_benchmarks.cpp
     bench/test_anthropic_benchmarks.cpp
+    bench/test_unified_benchmarks.cpp
 )
 
 # Link against the library and test framework
