@@ -15,6 +15,8 @@ namespace llmcpp {
 class ClientFactory {
    public:
     static std::unique_ptr<LLMClient> createClient(const std::string& provider, const json& config);
+    static std::unique_ptr<LLMClient> createClient(const std::string& provider,
+                                                   const std::string& apiKey);
 };
 
 }  // namespace llmcpp

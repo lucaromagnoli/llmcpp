@@ -2,10 +2,8 @@ name: CI
 
 on:
   push:
-    paths-ignore:  # Skip CI for documentation changes
-      - '**.md'
+    branches-ignore:  # Skip CI for documentation branches
       - 'docs/**'
-      - 'LICENSE'
 
 jobs:
   build-and-test:

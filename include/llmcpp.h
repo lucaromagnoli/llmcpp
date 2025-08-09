@@ -19,6 +19,10 @@
 #include "openai/OpenAISchemaBuilder.h"
 #include "openai/OpenAITypes.h"
 
+// Anthropic provider
+#include "anthropic/AnthropicClient.h"
+#include "anthropic/AnthropicTypes.h"
+
 // Version information
 #include "llmcpp_version.h"
 
@@ -44,5 +48,8 @@ using ClientManager = ::ClientManager;
 
 // OpenAI types
 using OpenAIClient = ::OpenAIClient;
+
+// Anthropic types
+using AnthropicClient = ::Anthropic::AnthropicClient;
 
 }  // namespace llmcpp
