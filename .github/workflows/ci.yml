@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    paths-ignore:  # Skip CI for docs directory only
+    branches-ignore:  # Skip CI for documentation branches
       - 'docs/**'
 
 jobs:
