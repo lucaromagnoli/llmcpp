@@ -63,6 +63,7 @@ set(LLMCPP_SOURCES
     src/core/LLMTypes.cpp
     src/core/LLMClient.cpp
     src/core/JsonSchemaBuilder.cpp
+    src/core/ClientFactory.cpp
     src/providers/ClientManager.cpp
     src/providers/ClientFactory.cpp
     src/openai/OpenAIClient.cpp
@@ -71,6 +72,8 @@ set(LLMCPP_SOURCES
     src/openai/OpenAISchemaBuilder.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAIUtils.cpp
+    src/anthropic/AnthropicClient.cpp
+    src/anthropic/AnthropicHttpClient.cpp
 )
 
 # Create library

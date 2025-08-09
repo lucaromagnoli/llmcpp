@@ -1,7 +1,9 @@
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
+#include <set>
 #include <vector>
 
+#include "anthropic/AnthropicClient.h"
 #include "core/ClientFactory.h"
 #include "core/ClientManager.h"
 #include "core/LLMTypes.h"
@@ -322,5 +324,88 @@ TEST_CASE("Provider-specific features", "[client][providers]") {
             REQUIRE(chatRequest.config.functionName.empty());
             REQUIRE(chatRequest.config.jsonSchema.empty());
         }
+    }
+}
+
+TEST_CASE("ClientFactory Anthropic provider", "[client][factory][anthropic]") {
+    ClientFactory factory;
+
+    SECTION("Create Anthropic client") {
+        // Test creating an Anthropic client
+        auto client = factory.createClient("anthropic", "test-api-key");
+
+        // Client should be created successfully
+        REQUIRE(client != nullptr);
+        REQUIRE(client->getClientName() == "AnthropicClient");
+    }
+
+    SECTION("Anthropic client configuration") {
+        auto client = factory.createClient("anthropic", "test-key-123");
+
+        REQUIRE(client != nullptr);
+
+        // Test that we can create a request with the client
+        LLMRequestConfig config;
+        config.model = "claude-3-5-haiku-20241022";
+        config.maxTokens = 100;
+
+        LLMRequest request(config, "Test prompt for Anthropic");
+
+        REQUIRE(request.config.model == "claude-3-5-haiku-20241022");
+        REQUIRE(request.config.maxTokens == 100);
+    }
+
+    SECTION("Anthropic client available models") {
+        auto client = factory.createClient("anthropic", "test-key");
+        REQUIRE(client != nullptr);
+
+        auto models = client->getAvailableModels();
+        REQUIRE(!models.empty());
+
+        // Check for key Anthropic models
+        REQUIRE(std::find(models.begin(), models.end(), "claude-3-5-haiku-20241022") !=
+                models.end());
+        REQUIRE(std::find(models.begin(), models.end(), "claude-3-5-sonnet-20241022") !=
+                models.end());
+    }
+
+    SECTION("Anthropic streaming support") {
+        auto client = factory.createClient("anthropic", "test-key");
+        REQUIRE(client != nullptr);
+
+        // Anthropic client doesn't support streaming yet
+        REQUIRE_FALSE(client->supportsStreaming());
+    }
+}
+
+TEST_CASE("ClientFactory provider support validation", "[client][factory][validation]") {
+    ClientFactory factory;
+
+    SECTION("Supported providers check") {
+        REQUIRE(factory.isProviderSupported("openai"));
+        REQUIRE(factory.isProviderSupported("anthropic"));
+        REQUIRE_FALSE(factory.isProviderSupported("invalid-provider"));
+        REQUIRE_FALSE(factory.isProviderSupported(""));
+    }
+
+    SECTION("Get supported providers list") {
+        auto providers = factory.getSupportedProviders();
+
+        REQUIRE(!providers.empty());
+        REQUIRE(providers.size() >= 2);  // At least openai and anthropic
+
+        REQUIRE(std::find(providers.begin(), providers.end(), "openai") != providers.end());
+        REQUIRE(std::find(providers.begin(), providers.end(), "anthropic") != providers.end());
+
+        // Verify no duplicates
+        std::set<std::string> uniqueProviders(providers.begin(), providers.end());
+        REQUIRE(uniqueProviders.size() == providers.size());
+    }
+
+    SECTION("Case sensitivity") {
+        // Provider names should be case sensitive
+        REQUIRE_FALSE(factory.isProviderSupported("OpenAI"));
+        REQUIRE_FALSE(factory.isProviderSupported("ANTHROPIC"));
+        REQUIRE_FALSE(factory.isProviderSupported("Anthropic"));
     }
 }

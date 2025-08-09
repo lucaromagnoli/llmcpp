@@ -8,7 +8,10 @@ target_link_libraries(basic_usage PRIVATE llmcpp)
 add_executable(async_example async_example.cpp)
 target_link_libraries(async_example PRIVATE llmcpp)
 
+add_executable(anthropic_example anthropic_example.cpp)
+target_link_libraries(anthropic_example PRIVATE llmcpp)
+
 # Install examples (optional)
-install(TARGETS basic_usage async_example
+install(TARGETS basic_usage async_example anthropic_example
     DESTINATION ${CMAKE_INSTALL_BINDIR}/examples
 )

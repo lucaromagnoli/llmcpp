@@ -22,12 +22,14 @@ set(UNIT_TEST_SOURCES
     unit/test_openai_response_parsing.cpp
     unit/test_client_factory.cpp
     unit/test_model_enum.cpp
+    unit/test_anthropic_types.cpp
 )
 
 # Integration test files
 set(INTEGRATION_TEST_SOURCES
     integration/test_simple_integration.cpp
     integration/test_openai_integration.cpp  # Re-enabling to check errors
+    integration/test_anthropic_integration.cpp
 )
 
 # Create test executable with all tests
@@ -36,6 +38,7 @@ add_executable(llmcpp_tests
     ${INTEGRATION_TEST_SOURCES}
     bench/benchmark_core.cpp
     bench/test_benchmarks.cpp
+    bench/test_anthropic_benchmarks.cpp
 )
 
 # Link against the library and test framework
