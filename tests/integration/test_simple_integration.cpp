@@ -102,7 +102,7 @@ TEST_CASE("OpenAI Integration - Simple request", "[openai][integration]") {
         config.client = "openai";
         config.model = "gpt-4o-mini";  // Use cheaper model for testing
         // Do not set maxTokens explicitly; let server default decide
-        config.temperature = 0.1f;     // Low temperature for consistency
+        config.temperature = 0.1f;  // Low temperature for consistency
 
         LLMRequest request(config, "Say 'Hello, World!' and nothing else.");
 

@@ -678,8 +678,8 @@ struct ResponsesRequest {
 
         // Reasoning models (O-series + GPT-5) have different parameter support
         if (modelEnum == Model::GPT_5 || modelEnum == Model::GPT_5_Mini ||
-            modelEnum == Model::GPT_5_Nano || modelEnum == Model::O3 || modelEnum == Model::O3_Mini ||
-            modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
+            modelEnum == Model::GPT_5_Nano || modelEnum == Model::O3 ||
+            modelEnum == Model::O3_Mini || modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
             modelEnum == Model::O1_Preview || modelEnum == Model::O1_Pro ||
             modelEnum == Model::O4_Mini || modelEnum == Model::O4_Mini_Deep_Research) {
             // Parameters NOT supported by reasoning models
@@ -1025,11 +1025,9 @@ std::string getRecommendedApiForModel(const std::string& model);
 
 // Model lists for different APIs
 const std::vector<std::string> RESPONSES_MODELS = {
-    "gpt-5",       "gpt-5-mini",          "gpt-5-nano",
-    "gpt-4o",      "gpt-4o-mini",
-    "gpt-4.1",     "gpt-4.1-nano",       "gpt-4.1-mini",
-    "gpt-image-1", "o1",                  "o3-mini",     "o3",
-    "o4-mini",     "computer-use-preview"};
+    "gpt-5",        "gpt-5-mini",          "gpt-5-nano",  "gpt-4o", "gpt-4o-mini", "gpt-4.1",
+    "gpt-4.1-nano", "gpt-4.1-mini",        "gpt-image-1", "o1",     "o3-mini",     "o3",
+    "o4-mini",      "computer-use-preview"};
 
 const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo", "gpt-4o",
                                                          "gpt-4o-mini", "gpt-3.5-turbo"};
