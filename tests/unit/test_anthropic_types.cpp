@@ -201,15 +201,15 @@ TEST_CASE("Anthropic MessagesRequest structure", "[anthropic][unit]") {
         REQUIRE(anthropicRequest.temperature == 0.5f);
         REQUIRE(anthropicRequest.messages.size() == 3);  // 2 context + 1 current
 
-        // Check the main prompt message
+        // Check context messages come first (chronological order)
         REQUIRE(anthropicRequest.messages[0].role == Anthropic::MessageRole::USER);
-        REQUIRE(anthropicRequest.messages[0].content[0].text == "Current question");
+        REQUIRE(anthropicRequest.messages[0].content[0].text == "Previous question");
+        REQUIRE(anthropicRequest.messages[1].role == Anthropic::MessageRole::ASSISTANT);
+        REQUIRE(anthropicRequest.messages[1].content[0].text == "Previous answer");
 
-        // Check context messages
-        REQUIRE(anthropicRequest.messages[1].role == Anthropic::MessageRole::USER);
-        REQUIRE(anthropicRequest.messages[1].content[0].text == "Previous question");
-        REQUIRE(anthropicRequest.messages[2].role == Anthropic::MessageRole::ASSISTANT);
-        REQUIRE(anthropicRequest.messages[2].content[0].text == "Previous answer");
+        // Check the main prompt message comes last
+        REQUIRE(anthropicRequest.messages[2].role == Anthropic::MessageRole::USER);
+        REQUIRE(anthropicRequest.messages[2].content[0].text == "Current question");
     }
 
     SECTION("LLMRequest conversion with invalid context") {
@@ -223,9 +223,10 @@ TEST_CASE("Anthropic MessagesRequest structure", "[anthropic][unit]") {
         LLMRequest llmRequest(config, "Main prompt", context);
         auto anthropicRequest = Anthropic::MessagesRequest::fromLLMRequest(llmRequest);
 
-        // Should have main prompt + 1 valid context message
+        // Should have 1 valid context message + main prompt
         REQUIRE(anthropicRequest.messages.size() == 2);
-        REQUIRE(anthropicRequest.messages[1].content[0].text == "Should be included");
+        REQUIRE(anthropicRequest.messages[0].content[0].text == "Should be included");
+        REQUIRE(anthropicRequest.messages[1].content[0].text == "Main prompt");
     }
 }
 
