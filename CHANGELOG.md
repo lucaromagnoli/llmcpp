@@ -4,6 +4,19 @@
 
 
 
+## [1.1.1] - 2025-08-09
+
+### Fixed
+- prevent creation of branch-named tags in release workflow
+
+### Other
+- Merge pull request #51 from lucaromagnoli/release/v1.1.0
+- Merge pull request #52 from lucaromagnoli/fix/release-workflow-tag-bug
+- Merge branch 'main' into release/v1.1.0
+- Merge pull request #53 from lucaromagnoli/release/v1.1.0
+- Style: apply pre-commit fixes (clang-format, EOF)
+- Merge pull request #54 from lucaromagnoli/fix/windows-ssl-guards
+
 ## [1.1.0] - 2025-08-09
 
 ### Added
