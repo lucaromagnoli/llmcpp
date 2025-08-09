@@ -3,9 +3,11 @@ name: macOS CI
 on:
   workflow_dispatch:  # Manual trigger only
   push:
-    branches: [ main, 'release/**' ]  # Run on main and release branches
-    paths-ignore:  # Skip for docs directory only
+    branches: [ main ]  # Only run on main branch pushes
+    paths-ignore:  # Skip for documentation changes
+      - '**.md'
       - 'docs/**'
+      - '.github/**'
 
 jobs:
   build-and-test-macos:
@@ -38,14 +40,6 @@ jobs:
         key: macos-homebrew-${{ hashFiles('.github/workflows/macos-ci.yml') }}
         restore-keys: macos-homebrew-
 
-    - name: Setup Xcode command line tools
-      run: |
-        # Ensure Xcode command line tools are properly set up
-        sudo xcode-select --install || true
-        sudo xcode-select --reset
-        # Set Xcode path explicitly
-        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-
     - name: Install dependencies (macOS)
       run: |
         brew install cmake ninja nlohmann-json
@@ -58,12 +52,7 @@ jobs:
 
     - name: Configure CMake
       run: |
-        # Set environment variables to help with linking
-        export MACOSX_DEPLOYMENT_TARGET=11.0
-        export SYSTEM_VERSION_COMPAT=0
-        # Configure with explicit settings
-        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLMCPP_BUILD_TESTS=ON \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+        cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DLLMCPP_BUILD_TESTS=ON
 
     - name: Build
       timeout-minutes: 20
