@@ -127,13 +127,64 @@ inline std::string toString(MessageRole role) {
 }
 
 /**
- * Anthropic message content (text-only for now)
+ * Anthropic message content (supports text, tool_use, and tool_result)
  */
 struct MessageContent {
     std::string type = "text";
     std::string text;
 
-    json toJson() const { return json{{"type", type}, {"text", text}}; }
+    // For tool_use content
+    std::string id;
+    std::string name;
+    json input;
+
+    // For tool_result content
+    std::string toolUseId;
+    json content;
+    bool isError = false;
+
+    json toJson() const {
+        if (type == "text") {
+            return json{{"type", type}, {"text", text}};
+        } else if (type == "tool_use") {
+            return json{{"type", type}, {"id", id}, {"name", name}, {"input", input}};
+        } else if (type == "tool_result") {
+            json j = {{"type", type}, {"tool_use_id", toolUseId}, {"content", content}};
+            if (isError) {
+                j["is_error"] = true;
+            }
+            return j;
+        }
+        return json{{"type", type}, {"text", text}};
+    }
+
+    // Convenience constructors
+    static MessageContent createText(const std::string& txt) {
+        MessageContent content;
+        content.type = "text";
+        content.text = txt;
+        return content;
+    }
+
+    static MessageContent createToolUse(const std::string& toolId, const std::string& toolName,
+                                        const json& toolInput) {
+        MessageContent content;
+        content.type = "tool_use";
+        content.id = toolId;
+        content.name = toolName;
+        content.input = toolInput;
+        return content;
+    }
+
+    static MessageContent createToolResult(const std::string& useId, const json& result,
+                                           bool error = false) {
+        MessageContent content;
+        content.type = "tool_result";
+        content.toolUseId = useId;
+        content.content = result;
+        content.isError = error;
+        return content;
+    }
 };
 
 /**
@@ -167,6 +218,54 @@ struct AnthropicConfig {
 };
 
 /**
+ * Tool definition for function calling
+ */
+struct Tool {
+    std::string name;
+    std::string description;
+    json inputSchema;
+
+    json toJson() const {
+        return json{{"name", name}, {"description", description}, {"input_schema", inputSchema}};
+    }
+};
+
+/**
+ * Tool use content (when model calls a tool)
+ */
+struct ToolUse {
+    std::string type = "tool_use";
+    std::string id;
+    std::string name;
+    json input;
+
+    json toJson() const {
+        return json{{"type", type}, {"id", id}, {"name", name}, {"input", input}};
+    }
+};
+
+/**
+ * Tool result content (response to tool use)
+ */
+struct ToolResult {
+    std::string type = "tool_result";
+    std::string toolUseId;
+    json content;
+    bool isError = false;
+
+    json toJson() const {
+        json j = {{"type", type}, {"tool_use_id", toolUseId}};
+
+        if (isError) {
+            j["is_error"] = true;
+        }
+
+        j["content"] = content;
+        return j;
+    }
+};
+
+/**
  * Anthropic Messages API request
  */
 struct MessagesRequest {
@@ -177,6 +276,7 @@ struct MessagesRequest {
     std::optional<double> topP;
     std::optional<std::string> system;
     std::vector<std::string> stopSequences;
+    std::vector<Tool> tools;  // Tool definitions for function calling
 
     json toJson() const {
         json j = {{"model", model}, {"messages", json::array()}};
@@ -201,6 +301,12 @@ struct MessagesRequest {
         }
         if (!stopSequences.empty()) {
             j["stop_sequences"] = stopSequences;
+        }
+        if (!tools.empty()) {
+            j["tools"] = json::array();
+            for (const auto& tool : tools) {
+                j["tools"].push_back(tool.toJson());
+            }
         }
 
         return j;

@@ -14,8 +14,18 @@ std::vector<ParsedResult> ResponseParser::parseStructuredResponse(const LLMRespo
     }
 
     // Extract text from response
-    std::string responseText =
-        response.result.is_string() ? response.result.get<std::string>() : response.result.dump();
+    std::string responseText;
+    try {
+        if (response.result.is_string()) {
+            responseText = response.result.get<std::string>();
+        } else if (response.result.is_object() && response.result.contains("text")) {
+            responseText = response.result["text"].get<std::string>();
+        } else {
+            responseText = response.result.dump();
+        }
+    } catch (...) {
+        responseText = response.result.dump();
+    }
 
     // Provider-specific parsing
     if (providerName == "Anthropic" || providerName == "anthropic") {
@@ -40,15 +50,8 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
     // Strip markdown fences first
     std::string cleanText = stripMarkdownFences(text);
 
-    // Extract XML content
-    std::string xmlContent = extractXmlContent(cleanText);
-    if (xmlContent.empty()) {
-        // Fallback to JSON array parsing if no XML found
-        return parseJsonArrayFromText(cleanText);
-    }
-
-    // Parse XML function calls
-    auto xmlResults = parseXmlFunctionCalls(xmlContent);
+    // Try to parse XML directly first
+    auto xmlResults = parseXmlFunctionCalls(cleanText);
     if (!xmlResults.empty()) {
         for (auto& result : xmlResults) {
             result.source = "anthropic_xml";
@@ -56,7 +59,7 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
         return xmlResults;
     }
 
-    // Final fallback
+    // If no XML found, fallback to JSON array parsing
     return parseJsonArrayFromText(cleanText);
 }
 
@@ -141,25 +144,8 @@ std::vector<ParsedResult> ResponseParser::parseJsonArrayFromText(const std::stri
             return results;
         }
 
-        // Parse array items
-        for (const auto& item : jsonArray) {
-            if (item.is_object()) {
-                std::string description = item.value("description", "");
-
-                // Look for notes/sequence data
-                if (item.contains("notes")) {
-                    results.emplace_back(description, item["notes"], "json_array_notes");
-                } else if (item.contains("sequence")) {
-                    results.emplace_back(description, item["sequence"], "json_array_sequence");
-                } else {
-                    // Include the whole object as data
-                    results.emplace_back(description, item, "json_array_object");
-                }
-            } else {
-                // Handle array of primitives
-                results.emplace_back("", item, "json_array_primitive");
-            }
-        }
+        // Return the entire array as a single result
+        results.emplace_back("", jsonArray, "json_array_text");
 
     } catch (const std::exception& e) {
         std::cerr << "JSON parsing error: " << e.what() << std::endl;
@@ -206,42 +192,61 @@ std::string ResponseParser::extractXmlContent(const std::string& text) {
 std::vector<ParsedResult> ResponseParser::parseXmlFunctionCalls(const std::string& xmlText) {
     std::vector<ParsedResult> results;
 
-    // Simple XML parsing - look for function_calls and parameters
-    std::regex functionCallRegex("<invoke\\s+name=\"([^\"]+)\">(.*?)</invoke>");
-    std::sregex_iterator iter(xmlText.begin(), xmlText.end(), functionCallRegex);
-    std::sregex_iterator end;
+    // Look for function_calls blocks first (use [\s\S] instead of . to match newlines)
+    std::regex functionCallsRegex(R"(<function_calls>([\s\S]*?)</function_calls>)");
+    std::sregex_iterator functionCallsIter(xmlText.begin(), xmlText.end(), functionCallsRegex);
+    std::sregex_iterator functionCallsEnd;
 
-    for (; iter != end; ++iter) {
-        std::string functionName = (*iter)[1].str();
-        std::string parameters = (*iter)[2].str();
+    for (; functionCallsIter != functionCallsEnd; ++functionCallsIter) {
+        std::string functionCallsContent = (*functionCallsIter)[1].str();
 
-        // Extract parameter values
-        std::string description = extractParameterValue(parameters, "description");
-        std::string sequenceData = extractParameterValue(parameters, "sequence_data");
-        std::string sequences = extractParameterValue(parameters, "sequences");
-        std::string notes = extractParameterValue(parameters, "notes");
+        // Look for invoke elements within function_calls (use [\s\S] instead of . to match
+        // newlines)
+        std::regex invokeRegex(
+            R"(<invoke\s+name\s*=\s*[\"']([^\"']+)[\"']\s*>([\s\S]*?)</invoke>)");
+        std::sregex_iterator invokeIter(functionCallsContent.begin(), functionCallsContent.end(),
+                                        invokeRegex);
+        std::sregex_iterator invokeEnd;
 
-        // Try to parse JSON data from parameters
-        if (!sequenceData.empty()) {
-            try {
-                auto json = nlohmann::json::parse(sequenceData);
-                results.emplace_back(description, json, "xml_sequence_data");
-            } catch (const std::exception& e) {
-                // Skip invalid JSON
+        for (; invokeIter != invokeEnd; ++invokeIter) {
+            std::string functionName = (*invokeIter)[1].str();
+            std::string parameters = (*invokeIter)[2].str();
+
+            // Extract all parameters using a more generic approach
+            std::regex allParamsRegex(
+                R"(<parameter\s+name\s*=\s*[\"']([^\"']+)[\"']\s*>([\s\S]*?)</parameter>)");
+            std::sregex_iterator paramIter(parameters.begin(), parameters.end(), allParamsRegex);
+            std::sregex_iterator paramEnd;
+
+            // Create result object with all parameters
+            nlohmann::json resultData;
+            std::string description;
+
+            for (; paramIter != paramEnd; ++paramIter) {
+                std::string paramName = (*paramIter)[1].str();
+                std::string paramValue = (*paramIter)[2].str();
+
+                // Trim whitespace
+                paramValue.erase(0, paramValue.find_first_not_of(" \t\n\r"));
+                paramValue.erase(paramValue.find_last_not_of(" \t\n\r") + 1);
+
+                if (paramName == "description") {
+                    description = paramValue;
+                }
+
+                // Try to parse as JSON, fallback to string
+                try {
+                    auto json = nlohmann::json::parse(paramValue);
+                    resultData[paramName] = json;
+                } catch (const std::exception& e) {
+                    // Store as string if JSON parsing fails
+                    resultData[paramName] = paramValue;
+                }
             }
-        } else if (!sequences.empty()) {
-            try {
-                auto json = nlohmann::json::parse(sequences);
-                results.emplace_back(description, json, "xml_sequences");
-            } catch (const std::exception& e) {
-                // Skip invalid JSON
-            }
-        } else if (!notes.empty()) {
-            try {
-                auto json = nlohmann::json::parse(notes);
-                results.emplace_back(description, json, "xml_notes");
-            } catch (const std::exception& e) {
-                // Skip invalid JSON
+
+            // Add result if we found any data
+            if (!resultData.empty()) {
+                results.emplace_back(description, resultData, "xml_function_call");
             }
         }
     }
@@ -251,11 +256,19 @@ std::vector<ParsedResult> ResponseParser::parseXmlFunctionCalls(const std::strin
 
 std::string ResponseParser::extractParameterValue(const std::string& xmlText,
                                                   const std::string& paramName) {
-    std::regex paramRegex("<parameter\\s+name=\"" + paramName + "\"[^>]*>(.*?)</parameter>");
+    // Handle both formats: <parameter name="param_name">value</parameter> (use [\s\S] to match
+    // newlines)
+    std::string pattern =
+        R"(<parameter\s+name\s*=\s*[\"'])" + paramName + R"([\"']\s*>([\s\S]*?)</parameter>)";
+    std::regex paramRegex(pattern);
     std::smatch match;
 
     if (std::regex_search(xmlText, match, paramRegex)) {
-        return match[1].str();
+        std::string value = match[1].str();
+        // Trim whitespace
+        value.erase(0, value.find_first_not_of(" \t\n\r"));
+        value.erase(value.find_last_not_of(" \t\n\r") + 1);
+        return value;
     }
 
     return "";

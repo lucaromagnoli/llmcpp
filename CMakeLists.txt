@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(llmcpp VERSION 1.2.0)
+project(llmcpp VERSION 1.1.1)
 
 # Set version variables for easier access
 set(LLMCPP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -75,6 +75,7 @@ set(LLMCPP_SOURCES
     src/openai/OpenAIUtils.cpp
     src/anthropic/AnthropicClient.cpp
     src/anthropic/AnthropicHttpClient.cpp
+    src/anthropic/AnthropicSchemaBuilder.cpp
 )
 
 # Create library
@@ -112,6 +113,8 @@ endif()
 if(LLMCPP_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+
 
 # Add tests if requested
 if(LLMCPP_BUILD_TESTS)

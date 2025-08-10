@@ -13,7 +13,6 @@
 #include "core/JsonSchemaBuilder.h"
 #include "core/LLMClient.h"
 #include "core/LLMTypes.h"
-#include "core/ResponseParser.h"
 
 // OpenAI provider
 #include "openai/OpenAIClient.h"
@@ -22,6 +21,7 @@
 
 // Anthropic provider
 #include "anthropic/AnthropicClient.h"
+#include "anthropic/AnthropicSchemaBuilder.h"
 #include "anthropic/AnthropicTypes.h"
 
 // Version information
