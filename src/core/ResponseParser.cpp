@@ -1,6 +1,7 @@
 #include "core/ResponseParser.h"
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <regex>
@@ -62,12 +63,16 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
 
     // Try to parse direct function tags (e.g.,
     // <generate_musical_sequence>JSON</generate_musical_sequence>)
-    auto directResults = parseDirectFunctionTags(cleanText, functionName);
-    if (!directResults.empty()) {
-        for (auto& result : directResults) {
-            result.source = "direct_function_tag";
+    try {
+        auto directResults = parseDirectFunctionTags(cleanText, functionName);
+        if (!directResults.empty()) {
+            for (auto& result : directResults) {
+                result.source = "direct_function_tag";
+            }
+            return directResults;
         }
-        return directResults;
+    } catch (const std::exception& e) {
+        // Continue to fallback if parseDirectFunctionTags fails
     }
 
     // If no XML found, fallback to JSON array parsing
@@ -496,7 +501,9 @@ bool ResponseParser::isJsonObject(const std::string& text) {
 bool ResponseParser::isAnthropicResponse(const std::string& text) {
     return text.find("<function_calls>") != std::string::npos ||
            text.find("<invoke") != std::string::npos ||
-           text.find("<parameter") != std::string::npos;
+           text.find("<parameter") != std::string::npos ||
+           text.find_first_of('<') !=
+               std::string::npos;  // Any XML-like tags suggest Anthropic format
 }
 
 bool ResponseParser::isOpenAIResponse(const LLMResponse& response) {
