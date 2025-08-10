@@ -210,7 +210,7 @@ struct AnthropicConfig {
     std::string apiKey;
     std::string baseUrl = "https://api.anthropic.com";
     std::string anthropicVersion = "2023-06-01";
-    Model defaultModel = Model::CLAUDE_SONNET_3_7;
+    Model defaultModel = Model::CLAUDE_SONNET_4;
     int timeoutSeconds = 30;
 
     AnthropicConfig() = default;
