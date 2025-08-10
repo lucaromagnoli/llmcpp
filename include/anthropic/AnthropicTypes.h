@@ -312,7 +312,7 @@ struct MessagesRequest {
             }
         }
         if (toolChoice.has_value()) {
-            j["tool_choice"] = {"type", toolChoice.value()};
+            j["tool_choice"] = json{{"type", toolChoice.value()}};
         }
 
         return j;
