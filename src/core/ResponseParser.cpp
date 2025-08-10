@@ -4,6 +4,7 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <stdexcept>
 
 namespace llmcpp {
 
@@ -77,9 +78,9 @@ std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::str
                                                                   const std::string& functionName) {
     std::vector<ParsedResult> results;
 
-    // Return empty if no function name provided
+    // Require function name parameter
     if (functionName.empty()) {
-        return results;
+        throw std::invalid_argument("parseDirectFunctionTags: functionName parameter is required");
     }
 
     // Look for function tags (with or without closing tags)
