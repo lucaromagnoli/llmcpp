@@ -64,6 +64,7 @@ set(LLMCPP_SOURCES
     src/core/LLMClient.cpp
     src/core/JsonSchemaBuilder.cpp
     src/core/ClientFactory.cpp
+    src/core/ResponseParser.cpp
     src/providers/ClientManager.cpp
     src/providers/ClientFactory.cpp
     src/openai/OpenAIClient.cpp
@@ -74,6 +75,7 @@ set(LLMCPP_SOURCES
     src/openai/OpenAIUtils.cpp
     src/anthropic/AnthropicClient.cpp
     src/anthropic/AnthropicHttpClient.cpp
+    src/anthropic/AnthropicSchemaBuilder.cpp
 )
 
 # Create library
@@ -111,6 +113,8 @@ endif()
 if(LLMCPP_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
+
+
 
 # Add tests if requested
 if(LLMCPP_BUILD_TESTS)

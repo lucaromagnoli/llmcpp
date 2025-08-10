@@ -98,16 +98,18 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline std::vector<std::string> getAvailableModels() {
     return {// Latest Claude 4 models
-            "claude-opus-4-1-20250805", "claude-opus-4-20250514", "claude-sonnet-4-20250514",
+            toString(Model::CLAUDE_OPUS_4_1), toString(Model::CLAUDE_OPUS_4),
+            toString(Model::CLAUDE_SONNET_4),
 
             // Claude 3.7
-            "claude-3-7-sonnet-20250219",
+            toString(Model::CLAUDE_SONNET_3_7),
 
             // Claude 3.5 models
-            "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-20241022",
+            toString(Model::CLAUDE_SONNET_3_5_V2), toString(Model::CLAUDE_SONNET_3_5),
+            toString(Model::CLAUDE_HAIKU_3_5),
 
             // Legacy Claude 3 models
-            "claude-3-opus-20240229", "claude-3-haiku-20240307"};
+            toString(Model::CLAUDE_OPUS_3), toString(Model::CLAUDE_HAIKU_3)};
 }
 
 /**
@@ -127,13 +129,64 @@ inline std::string toString(MessageRole role) {
 }
 
 /**
- * Anthropic message content (text-only for now)
+ * Anthropic message content (supports text, tool_use, and tool_result)
  */
 struct MessageContent {
     std::string type = "text";
     std::string text;
 
-    json toJson() const { return json{{"type", type}, {"text", text}}; }
+    // For tool_use content
+    std::string id;
+    std::string name;
+    json input;
+
+    // For tool_result content
+    std::string toolUseId;
+    json content;
+    bool isError = false;
+
+    json toJson() const {
+        if (type == "text") {
+            return json{{"type", type}, {"text", text}};
+        } else if (type == "tool_use") {
+            return json{{"type", type}, {"id", id}, {"name", name}, {"input", input}};
+        } else if (type == "tool_result") {
+            json j = {{"type", type}, {"tool_use_id", toolUseId}, {"content", content}};
+            if (isError) {
+                j["is_error"] = true;
+            }
+            return j;
+        }
+        return json{{"type", type}, {"text", text}};
+    }
+
+    // Convenience constructors
+    static MessageContent createText(const std::string& txt) {
+        MessageContent content;
+        content.type = "text";
+        content.text = txt;
+        return content;
+    }
+
+    static MessageContent createToolUse(const std::string& toolId, const std::string& toolName,
+                                        const json& toolInput) {
+        MessageContent content;
+        content.type = "tool_use";
+        content.id = toolId;
+        content.name = toolName;
+        content.input = toolInput;
+        return content;
+    }
+
+    static MessageContent createToolResult(const std::string& useId, const json& result,
+                                           bool error = false) {
+        MessageContent content;
+        content.type = "tool_result";
+        content.toolUseId = useId;
+        content.content = result;
+        content.isError = error;
+        return content;
+    }
 };
 
 /**
@@ -159,11 +212,59 @@ struct AnthropicConfig {
     std::string apiKey;
     std::string baseUrl = "https://api.anthropic.com";
     std::string anthropicVersion = "2023-06-01";
-    Model defaultModel = Model::CLAUDE_SONNET_3_5_V2;  // Latest stable model
+    Model defaultModel = Model::CLAUDE_SONNET_3_5_V2;
     int timeoutSeconds = 30;
 
     AnthropicConfig() = default;
     explicit AnthropicConfig(const std::string& key) : apiKey(key) {}
+};
+
+/**
+ * Tool definition for function calling
+ */
+struct Tool {
+    std::string name;
+    std::string description;
+    json inputSchema;
+
+    json toJson() const {
+        return json{{"name", name}, {"description", description}, {"input_schema", inputSchema}};
+    }
+};
+
+/**
+ * Tool use content (when model calls a tool)
+ */
+struct ToolUse {
+    std::string type = "tool_use";
+    std::string id;
+    std::string name;
+    json input;
+
+    json toJson() const {
+        return json{{"type", type}, {"id", id}, {"name", name}, {"input", input}};
+    }
+};
+
+/**
+ * Tool result content (response to tool use)
+ */
+struct ToolResult {
+    std::string type = "tool_result";
+    std::string toolUseId;
+    json content;
+    bool isError = false;
+
+    json toJson() const {
+        json j = {{"type", type}, {"tool_use_id", toolUseId}};
+
+        if (isError) {
+            j["is_error"] = true;
+        }
+
+        j["content"] = content;
+        return j;
+    }
 };
 
 /**
@@ -177,6 +278,8 @@ struct MessagesRequest {
     std::optional<double> topP;
     std::optional<std::string> system;
     std::vector<std::string> stopSequences;
+    std::vector<Tool> tools;                // Tool definitions for function calling
+    std::optional<std::string> toolChoice;  // "auto", "any", or specific tool name
 
     json toJson() const {
         json j = {{"model", model}, {"messages", json::array()}};
@@ -201,6 +304,15 @@ struct MessagesRequest {
         }
         if (!stopSequences.empty()) {
             j["stop_sequences"] = stopSequences;
+        }
+        if (!tools.empty()) {
+            j["tools"] = json::array();
+            for (const auto& tool : tools) {
+                j["tools"].push_back(tool.toJson());
+            }
+        }
+        if (toolChoice.has_value()) {
+            j["tool_choice"] = json{{"type", toolChoice.value()}};
         }
 
         return j;
@@ -277,11 +389,11 @@ struct MessagesResponse {
     /**
      * Convert to common LLMResponse
      */
-    LLMResponse toLLMResponse() const {
+    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const {
         LLMResponse response;
         response.success = !content.empty();
 
-        // Combine all text content into result JSON
+        // Combine all text content and parse as JSON
         std::string fullText;
         for (const auto& c : content) {
             if (c.type == "text") {
@@ -289,8 +401,20 @@ struct MessagesResponse {
             }
         }
 
-        // Store content as a simple text result
-        response.result = json{{"text", fullText}};
+        // For tool calls, we return the input JSON; for text responses, handle based on expectation
+        if (!content.empty() && content[0].type == "tool_use") {
+            // Extract tool call input as the result
+            response.result = content[0].input;
+        } else {
+            // For text responses, handle based on whether structured output is expected
+            if (expectStructuredOutput) {
+                // Parse as JSON for structured output
+                response.result = json::parse(fullText);
+            } else {
+                // Wrap free-form text in text field
+                response.result = json{{"text", fullText}};
+            }
+        }
 
         response.usage.inputTokens = usage.inputTokens;
         response.usage.outputTokens = usage.outputTokens;
@@ -336,6 +460,18 @@ struct MessagesResponse {
                 }
                 if (contentItem.contains("text")) {
                     content.text = contentItem["text"];
+                }
+                // Parse tool_use content
+                if (content.type == "tool_use") {
+                    if (contentItem.contains("id")) {
+                        content.id = contentItem["id"];
+                    }
+                    if (contentItem.contains("name")) {
+                        content.name = contentItem["name"];
+                    }
+                    if (contentItem.contains("input")) {
+                        content.input = contentItem["input"];
+                    }
                 }
                 response.content.push_back(content);
             }

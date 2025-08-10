@@ -21,6 +21,7 @@
 
 // Anthropic provider
 #include "anthropic/AnthropicClient.h"
+#include "anthropic/AnthropicSchemaBuilder.h"
 #include "anthropic/AnthropicTypes.h"
 
 // Version information

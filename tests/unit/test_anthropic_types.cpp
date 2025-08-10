@@ -278,7 +278,7 @@ TEST_CASE("Anthropic MessagesResponse structure", "[anthropic][unit]") {
         anthropicResponse.usage.inputTokens = 15;
         anthropicResponse.usage.outputTokens = 30;
 
-        auto llmResponse = anthropicResponse.toLLMResponse();
+        auto llmResponse = anthropicResponse.toLLMResponse(false);  // false = free-form text
 
         REQUIRE(llmResponse.success == true);
         REQUIRE(llmResponse.result.contains("text"));
@@ -292,7 +292,7 @@ TEST_CASE("Anthropic MessagesResponse structure", "[anthropic][unit]") {
         Anthropic::MessagesResponse anthropicResponse;
         // No content added
 
-        auto llmResponse = anthropicResponse.toLLMResponse();
+        auto llmResponse = anthropicResponse.toLLMResponse(false);  // false = free-form text
 
         REQUIRE(llmResponse.success == false);
         REQUIRE(!llmResponse.errorMessage.empty());
@@ -303,7 +303,7 @@ TEST_CASE("Anthropic MessagesResponse structure", "[anthropic][unit]") {
         anthropicResponse.content.push_back({.type = "text", .text = "First part"});
         anthropicResponse.content.push_back({.type = "text", .text = " Second part"});
 
-        auto llmResponse = anthropicResponse.toLLMResponse();
+        auto llmResponse = anthropicResponse.toLLMResponse(false);  // false = free-form text
 
         REQUIRE(llmResponse.success == true);
         REQUIRE(llmResponse.result["text"] == "First part Second part");
