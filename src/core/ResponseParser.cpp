@@ -61,14 +61,13 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
 
     // Try to parse direct function tags (e.g.,
     // <generate_musical_sequence>JSON</generate_musical_sequence>)
-    // TODO: Fix parseDirectFunctionTags implementation
-    // auto directResults = parseDirectFunctionTags(cleanText, functionName);
-    // if (!directResults.empty()) {
-    //     for (auto& result : directResults) {
-    //         result.source = "direct_function_tag";
-    //     }
-    //     return directResults;
-    // }
+    auto directResults = parseDirectFunctionTags(cleanText, functionName);
+    if (!directResults.empty()) {
+        for (auto& result : directResults) {
+            result.source = "direct_function_tag";
+        }
+        return directResults;
+    }
 
     // If no XML found, fallback to JSON array parsing
     return parseJsonArrayFromText(cleanText);
@@ -76,8 +75,35 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
 
 std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::string& text,
                                                                   const std::string& functionName) {
-    // TODO: Implement parseDirectFunctionTags - temporarily disabled due to compilation issues
     std::vector<ParsedResult> results;
+
+    // Simple implementation: look for <generate_musical_sequence> tags specifically
+    std::string targetTag = functionName.empty() ? "generate_musical_sequence" : functionName;
+    std::string openTag = "<" + targetTag + ">";
+    std::string closeTag = "</" + targetTag + ">";
+
+    size_t start = text.find(openTag);
+    if (start != std::string::npos) {
+        start += openTag.length();
+        size_t end = text.find(closeTag, start);
+
+        if (end != std::string::npos) {
+            std::string jsonContent = text.substr(start, end - start);
+
+            // Trim whitespace
+            jsonContent.erase(0, jsonContent.find_first_not_of(" \t\n\r"));
+            jsonContent.erase(jsonContent.find_last_not_of(" \t\n\r") + 1);
+
+            try {
+                auto jsonData = nlohmann::json::parse(jsonContent);
+                std::string description = "Function call: " + targetTag;
+                results.emplace_back(description, jsonData, "direct_function_tag");
+            } catch (const std::exception& e) {
+                // If not valid JSON, ignore
+            }
+        }
+    }
+
     return results;
 }
 
