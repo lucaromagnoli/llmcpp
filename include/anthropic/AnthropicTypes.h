@@ -209,7 +209,7 @@ struct Message {
 struct AnthropicConfig {
     std::string apiKey;
     std::string baseUrl = "https://api.anthropic.com";
-    std::string anthropicVersion = "2023-06-01";
+    std::string anthropicVersion = "2025-05-14";
     Model defaultModel = Model::CLAUDE_SONNET_4;
     int timeoutSeconds = 30;
 
