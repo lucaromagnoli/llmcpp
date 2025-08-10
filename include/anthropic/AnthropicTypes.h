@@ -209,7 +209,7 @@ struct Message {
 struct AnthropicConfig {
     std::string apiKey;
     std::string baseUrl = "https://api.anthropic.com";
-    std::string anthropicVersion = "2025-05-14";
+    std::string anthropicVersion = "2023-06-01";
     Model defaultModel = Model::CLAUDE_SONNET_4;
     int timeoutSeconds = 30;
 
@@ -276,7 +276,8 @@ struct MessagesRequest {
     std::optional<double> topP;
     std::optional<std::string> system;
     std::vector<std::string> stopSequences;
-    std::vector<Tool> tools;  // Tool definitions for function calling
+    std::vector<Tool> tools;                // Tool definitions for function calling
+    std::optional<std::string> toolChoice;  // "auto", "any", or specific tool name
 
     json toJson() const {
         json j = {{"model", model}, {"messages", json::array()}};
@@ -307,6 +308,9 @@ struct MessagesRequest {
             for (const auto& tool : tools) {
                 j["tools"].push_back(tool.toJson());
             }
+        }
+        if (toolChoice.has_value()) {
+            j["tool_choice"] = {"type", toolChoice.value()};
         }
 
         return j;
