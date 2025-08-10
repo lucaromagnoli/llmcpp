@@ -443,6 +443,18 @@ struct MessagesResponse {
                 if (contentItem.contains("text")) {
                     content.text = contentItem["text"];
                 }
+                // Parse tool_use content
+                if (content.type == "tool_use") {
+                    if (contentItem.contains("id")) {
+                        content.id = contentItem["id"];
+                    }
+                    if (contentItem.contains("name")) {
+                        content.name = contentItem["name"];
+                    }
+                    if (contentItem.contains("input")) {
+                        content.input = contentItem["input"];
+                    }
+                }
                 response.content.push_back(content);
             }
         }
