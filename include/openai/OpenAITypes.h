@@ -1255,11 +1255,12 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
     if (hasError()) {
         llmResp.errorMessage = error->dump();
     } else {
-        // Extract text output from the response
-        llmResp.result = json::object();
+        // Extract text output from the response and parse as JSON
         std::string textOutput = getOutputText();
         if (!textOutput.empty()) {
-            llmResp.result["text"] = textOutput;
+            llmResp.result = json::parse(textOutput);
+        } else {
+            llmResp.result = json::object();
         }
 
         // Add function calls if any

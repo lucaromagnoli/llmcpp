@@ -387,7 +387,7 @@ struct MessagesResponse {
         LLMResponse response;
         response.success = !content.empty();
 
-        // Combine all text content into result JSON
+        // Combine all text content and parse as JSON
         std::string fullText;
         for (const auto& c : content) {
             if (c.type == "text") {
@@ -395,8 +395,8 @@ struct MessagesResponse {
             }
         }
 
-        // Store content as a simple text result
-        response.result = json{{"text", fullText}};
+        // Parse the response content directly as JSON
+        response.result = json::parse(fullText);
 
         response.usage.inputTokens = usage.inputTokens;
         response.usage.outputTokens = usage.outputTokens;
