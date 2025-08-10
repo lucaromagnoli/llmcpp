@@ -268,7 +268,10 @@ LLMResponse OpenAIClient::routeRequest(const LLMRequest& request) {
             // Use Responses API (preferred for modern features)
             auto responsesRequest = OpenAI::ResponsesRequest::fromLLMRequest(request);
             auto responsesResponse = sendResponsesRequest(responsesRequest);
-            return responsesResponse.toLLMResponse();
+            // Check if structured output is expected based on JSON schema
+            bool expectStructured =
+                !request.config.jsonSchema.empty() || request.config.schemaObject.has_value();
+            return responsesResponse.toLLMResponse(expectStructured);
         } else if (apiType == OpenAI::ApiType::CHAT_COMPLETIONS) {
             // Chat Completions API - not yet implemented
             throw std::runtime_error("Chat Completions API not yet implemented");

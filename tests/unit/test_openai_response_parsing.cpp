@@ -92,7 +92,8 @@ TEST_CASE("OpenAI Response Parsing - Sample Data", "[openai][parsing]") {
         auto openaiResponse = OpenAI::ResponsesResponse::fromJson(responseJson);
 
         LLMResponse llmResponse;
-        REQUIRE_NOTHROW(llmResponse = openaiResponse.toLLMResponse());
+        REQUIRE_NOTHROW(llmResponse =
+                            openaiResponse.toLLMResponse(false));  // false = free-form text
 
         std::cout << "📋 LLM Success: " << llmResponse.success << std::endl;
         std::cout << "📋 LLM Error: " << llmResponse.errorMessage << std::endl;

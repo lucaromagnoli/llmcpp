@@ -212,7 +212,7 @@ struct AnthropicConfig {
     std::string apiKey;
     std::string baseUrl = "https://api.anthropic.com";
     std::string anthropicVersion = "2023-06-01";
-    Model defaultModel = Model::CLAUDE_SONNET_4;
+    Model defaultModel = Model::CLAUDE_SONNET_3_5_V2;
     int timeoutSeconds = 30;
 
     AnthropicConfig() = default;
@@ -389,7 +389,7 @@ struct MessagesResponse {
     /**
      * Convert to common LLMResponse
      */
-    LLMResponse toLLMResponse() const {
+    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const {
         LLMResponse response;
         response.success = !content.empty();
 
@@ -401,8 +401,20 @@ struct MessagesResponse {
             }
         }
 
-        // Parse the response content directly as JSON
-        response.result = json::parse(fullText);
+        // For tool calls, we return the input JSON; for text responses, handle based on expectation
+        if (!content.empty() && content[0].type == "tool_use") {
+            // Extract tool call input as the result
+            response.result = content[0].input;
+        } else {
+            // For text responses, handle based on whether structured output is expected
+            if (expectStructuredOutput) {
+                // Parse as JSON for structured output
+                response.result = json::parse(fullText);
+            } else {
+                // Wrap free-form text in text field
+                response.result = json{{"text", fullText}};
+            }
+        }
 
         response.usage.inputTokens = usage.inputTokens;
         response.usage.outputTokens = usage.outputTokens;

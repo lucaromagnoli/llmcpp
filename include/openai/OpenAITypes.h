@@ -849,7 +849,7 @@ struct ResponsesResponse {
     std::optional<std::string> reasoningEffort;
 
     static ResponsesResponse fromJson(const json& j);
-    LLMResponse toLLMResponse() const;
+    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const;
 
     // Convenience methods
     std::string getOutputText() const;
@@ -964,7 +964,7 @@ struct ChatCompletionResponse {
     std::optional<std::string> systemFingerprint;
 
     static ChatCompletionResponse fromJson(const json& j);
-    LLMResponse toLLMResponse() const;
+    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const;
 };
 
 /**
@@ -1246,7 +1246,7 @@ inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
     return resp;
 }
 
-inline LLMResponse ResponsesResponse::toLLMResponse() const {
+inline LLMResponse ResponsesResponse::toLLMResponse(bool expectStructuredOutput) const {
     LLMResponse llmResp;
     llmResp.success = (status == ResponseStatus::Completed);
     llmResp.responseId = id;
@@ -1255,10 +1255,16 @@ inline LLMResponse ResponsesResponse::toLLMResponse() const {
     if (hasError()) {
         llmResp.errorMessage = error->dump();
     } else {
-        // Extract text output from the response and parse as JSON
+        // Extract text output from the response
         std::string textOutput = getOutputText();
         if (!textOutput.empty()) {
-            llmResp.result = json::parse(textOutput);
+            if (expectStructuredOutput) {
+                // Parse as JSON for structured output
+                llmResp.result = json::parse(textOutput);
+            } else {
+                // Wrap free-form text in text field
+                llmResp.result = json{{"text", textOutput}};
+            }
         } else {
             llmResp.result = json::object();
         }
@@ -1405,7 +1411,7 @@ inline ChatCompletionResponse ChatCompletionResponse::fromJson(const json& j) {
     return resp;
 }
 
-inline LLMResponse ChatCompletionResponse::toLLMResponse() const {
+inline LLMResponse ChatCompletionResponse::toLLMResponse(bool expectStructuredOutput) const {
     LLMResponse llmResp;
     llmResp.success = !choices.empty();
     llmResp.responseId = id;

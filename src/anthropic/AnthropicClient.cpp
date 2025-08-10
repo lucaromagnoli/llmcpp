@@ -53,7 +53,10 @@ class AnthropicClient::ClientImpl {
             auto messagesResponse = httpClient_->sendMessagesRequest(messagesRequest);
 
             // Convert back to LLMResponse
-            return messagesResponse.toLLMResponse();
+            // Check if structured output is expected based on JSON schema
+            bool expectStructured =
+                !request.config.jsonSchema.empty() || request.config.schemaObject.has_value();
+            return messagesResponse.toLLMResponse(expectStructured);
         } catch (const std::exception& e) {
             LLMResponse errorResponse;
             errorResponse.success = false;
