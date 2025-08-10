@@ -23,7 +23,7 @@ set(UNIT_TEST_SOURCES
     unit/test_client_factory.cpp
     unit/test_model_enum.cpp
     unit/test_anthropic_types.cpp
-    unit/test_response_parser_simple.cpp
+    unit/test_response_parser.cpp
     unit/test_anthropic_schema_builder.cpp
 )
 
