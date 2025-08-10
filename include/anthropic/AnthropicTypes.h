@@ -98,16 +98,18 @@ inline Model modelFromString(const std::string& modelStr) {
  */
 inline std::vector<std::string> getAvailableModels() {
     return {// Latest Claude 4 models
-            "claude-opus-4-1-20250805", "claude-opus-4-20250514", "claude-sonnet-4-20250514",
+            toString(Model::CLAUDE_OPUS_4_1), toString(Model::CLAUDE_OPUS_4),
+            toString(Model::CLAUDE_SONNET_4),
 
             // Claude 3.7
-            "claude-3-7-sonnet-20250219",
+            toString(Model::CLAUDE_SONNET_3_7),
 
             // Claude 3.5 models
-            "claude-3-5-sonnet-20241022", "claude-3-5-sonnet-20240620", "claude-3-5-haiku-20241022",
+            toString(Model::CLAUDE_SONNET_3_5_V2), toString(Model::CLAUDE_SONNET_3_5),
+            toString(Model::CLAUDE_HAIKU_3_5),
 
             // Legacy Claude 3 models
-            "claude-3-opus-20240229", "claude-3-haiku-20240307"};
+            toString(Model::CLAUDE_OPUS_3), toString(Model::CLAUDE_HAIKU_3)};
 }
 
 /**
