@@ -16,67 +16,33 @@ std::vector<ParsedResult> ResponseParser::parseStructuredResponse(const LLMRespo
         return {};
     }
 
-    // Extract text from response
-    std::string responseText;
-    try {
-        if (response.result.is_string()) {
-            responseText = response.result.get<std::string>();
-        } else if (response.result.is_object() && response.result.contains("text")) {
-            responseText = response.result["text"].get<std::string>();
-        } else {
-            responseText = response.result.dump();
-        }
-    } catch (...) {
-        responseText = response.result.dump();
-    }
-
-    // Provider-specific parsing
-    if (providerName == "Anthropic" || providerName == "anthropic") {
-        return parseAnthropicXmlResponse(responseText, functionName);
-    } else if (providerName == "OpenAI" || providerName == "openai") {
-        return parseOpenAIJsonResponse(response);
-    }
-
-    // Fallback: try to detect format automatically
-    if (isAnthropicResponse(responseText)) {
-        return parseAnthropicXmlResponse(responseText, functionName);
-    } else {
-        return parseOpenAIJsonResponse(response);
-    }
+    // Just return the raw response - don't parse anything
+    // Let aideas handle all parsing logic
+    std::vector<ParsedResult> results;
+    results.emplace_back("", response.result, "raw_response");
+    return results;
 }
 
 std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
     const std::string& text, const std::string& functionName) {
-    std::vector<ParsedResult> results;
-
-    // Strip markdown fences first
-    std::string cleanText = stripMarkdownFences(text);
-
-    // Try to parse standard XML function calls first (Anthropic format)
-    auto xmlResults = parseXmlFunctionCalls(cleanText);
-    if (!xmlResults.empty()) {
-        for (auto& result : xmlResults) {
-            result.source = "anthropic_xml";
-        }
-        return xmlResults;
-    }
-
-    // Try to parse direct function tags (e.g.,
-    // <generate_musical_sequence>JSON</generate_musical_sequence>)
+    // Anthropic returns structured JSON in "text" field, often wrapped in markdown fences
     try {
-        auto directResults = parseDirectFunctionTags(cleanText, functionName);
-        if (!directResults.empty()) {
-            for (auto& result : directResults) {
-                result.source = "direct_function_tag";
-            }
-            return directResults;
+        auto jsonResponse = nlohmann::json::parse(text);
+        if (jsonResponse.contains("text") && jsonResponse["text"].is_string()) {
+            std::string content = jsonResponse["text"].get<std::string>();
+
+            // Strip markdown fences if present
+            content = stripMarkdownFences(content);
+
+            auto contentJson = nlohmann::json::parse(content);
+            std::vector<ParsedResult> results;
+            results.emplace_back("", contentJson, "anthropic_structured");
+            return results;
         }
     } catch (const std::exception& e) {
-        // Continue to fallback if parseDirectFunctionTags fails
+        // If parsing fails, return empty
     }
-
-    // If no XML found, fallback to JSON array parsing
-    return parseJsonArrayFromText(cleanText);
+    return {};
 }
 
 std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::string& text,
@@ -155,48 +121,22 @@ std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::str
 std::vector<ParsedResult> ResponseParser::parseOpenAIJsonResponse(const LLMResponse& response) {
     std::vector<ParsedResult> results;
 
-    try {
-        // Handle structured JSON response
-        if (response.result.is_object()) {
-            // Handle Responses API format
-            if (response.result.contains("choices") && response.result["choices"].is_array()) {
-                auto choices = response.result["choices"];
-                if (!choices.empty() && choices[0].contains("message")) {
-                    auto message = choices[0]["message"];
+    std::cerr << "DEBUG: parseOpenAIJsonResponse called" << std::endl;
+    std::cerr << "DEBUG: response.result.is_object() = " << response.result.is_object()
+              << std::endl;
+    std::cerr << "DEBUG: response.result type = " << response.result.type_name() << std::endl;
+    std::cerr << "DEBUG: response.result dump = " << response.result.dump().substr(0, 200) << "..."
+              << std::endl;
 
-                    // Check for tool calls
-                    if (message.contains("tool_calls") && message["tool_calls"].is_array()) {
-                        for (const auto& toolCall : message["tool_calls"]) {
-                            if (toolCall.contains("function") &&
-                                toolCall["function"].contains("arguments")) {
-                                std::string argsStr = toolCall["function"]["arguments"];
-                                auto args = nlohmann::json::parse(argsStr);
-                                results.emplace_back("", args, "openai_tool_call");
-                            }
-                        }
-                        return results;
-                    }
-
-                    // Check for direct content
-                    if (message.contains("content")) {
-                        std::string content = message["content"];
-                        return parseJsonArrayFromText(content);
-                    }
-                }
-            }
-        }
-
-        // Fallback to parsing as text
-        std::string responseText = response.result.is_string() ? response.result.get<std::string>()
-                                                               : response.result.dump();
-        return parseJsonArrayFromText(responseText);
-
-    } catch (const std::exception& e) {
-        // If JSON parsing fails, try text parsing
-        std::string responseText = response.result.is_string() ? response.result.get<std::string>()
-                                                               : response.result.dump();
-        return parseJsonArrayFromText(responseText);
+    // Handle structured JSON response - return it exactly as-is
+    if (response.result.is_object()) {
+        std::cerr << "DEBUG: Returning openai_structured" << std::endl;
+        results.emplace_back("", response.result, "openai_structured");
+        return results;
     }
+
+    std::cerr << "DEBUG: Response not structured, returning empty" << std::endl;
+    return results;
 }
 
 std::vector<ParsedResult> ResponseParser::parseJsonArrayFromText(const std::string& text) {
