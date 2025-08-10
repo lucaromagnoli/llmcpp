@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(llmcpp VERSION 1.1.1)
+project(llmcpp VERSION 1.2.0)
 
 # Set version variables for easier access
 set(LLMCPP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
@@ -64,6 +64,7 @@ set(LLMCPP_SOURCES
     src/core/LLMClient.cpp
     src/core/JsonSchemaBuilder.cpp
     src/core/ClientFactory.cpp
+    src/core/ResponseParser.cpp
     src/providers/ClientManager.cpp
     src/providers/ClientFactory.cpp
     src/openai/OpenAIClient.cpp
