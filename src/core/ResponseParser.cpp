@@ -77,30 +77,69 @@ std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::str
                                                                   const std::string& functionName) {
     std::vector<ParsedResult> results;
 
-    // Simple implementation: look for <generate_musical_sequence> tags specifically
-    std::string targetTag = functionName.empty() ? "generate_musical_sequence" : functionName;
-    std::string openTag = "<" + targetTag + ">";
-    std::string closeTag = "</" + targetTag + ">";
+    // Return empty if no function name provided
+    if (functionName.empty()) {
+        return results;
+    }
+
+    // Look for function tags (with or without closing tags)
+    std::string openTag = "<" + functionName + ">";
+    std::string closeTag = "</" + functionName + ">";
 
     size_t start = text.find(openTag);
     if (start != std::string::npos) {
         start += openTag.length();
+
+        // Look for closing tag first
         size_t end = text.find(closeTag, start);
+        std::string jsonContent;
 
         if (end != std::string::npos) {
-            std::string jsonContent = text.substr(start, end - start);
+            // Found closing tag
+            jsonContent = text.substr(start, end - start);
+        } else {
+            // No closing tag - extract JSON from the current position to end of text
+            jsonContent = text.substr(start);
 
-            // Trim whitespace
-            jsonContent.erase(0, jsonContent.find_first_not_of(" \t\n\r"));
-            jsonContent.erase(jsonContent.find_last_not_of(" \t\n\r") + 1);
+            // Try to extract just the JSON part by finding balanced brackets
+            size_t firstBrace = jsonContent.find_first_of("[{");
+            if (firstBrace != std::string::npos) {
+                jsonContent = jsonContent.substr(firstBrace);
 
-            try {
-                auto jsonData = nlohmann::json::parse(jsonContent);
-                std::string description = "Function call: " + targetTag;
-                results.emplace_back(description, jsonData, "direct_function_tag");
-            } catch (const std::exception& e) {
-                // If not valid JSON, ignore
+                // Find matching closing bracket/brace
+                int depth = 0;
+                char openChar = jsonContent[0];
+                char closeChar = (openChar == '[') ? ']' : '}';
+                size_t endPos = 0;
+
+                for (size_t i = 0; i < jsonContent.length(); ++i) {
+                    if (jsonContent[i] == openChar)
+                        depth++;
+                    else if (jsonContent[i] == closeChar) {
+                        depth--;
+                        if (depth == 0) {
+                            endPos = i + 1;
+                            break;
+                        }
+                    }
+                }
+
+                if (endPos > 0) {
+                    jsonContent = jsonContent.substr(0, endPos);
+                }
             }
+        }
+
+        // Trim whitespace
+        jsonContent.erase(0, jsonContent.find_first_not_of(" \t\n\r"));
+        jsonContent.erase(jsonContent.find_last_not_of(" \t\n\r") + 1);
+
+        try {
+            auto jsonData = nlohmann::json::parse(jsonContent);
+            std::string description = "Function call: " + functionName;
+            results.emplace_back(description, jsonData, "direct_function_tag");
+        } catch (const std::exception& e) {
+            // If not valid JSON, ignore
         }
     }
 
