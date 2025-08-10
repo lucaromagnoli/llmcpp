@@ -77,6 +77,8 @@ class ResponseParser {
     // Helper methods for XML parsing
     static std::string extractXmlContent(const std::string& text);
     static std::vector<ParsedResult> parseXmlFunctionCalls(const std::string& xmlText);
+    static std::vector<ParsedResult> parseDirectFunctionTags(const std::string& text,
+                                                             const std::string& functionName);
     static std::string extractParameterValue(const std::string& xmlText,
                                              const std::string& paramName);
 

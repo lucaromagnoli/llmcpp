@@ -44,13 +44,12 @@ std::vector<ParsedResult> ResponseParser::parseStructuredResponse(const LLMRespo
 
 std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
     const std::string& text, const std::string& functionName) {
-    (void)functionName;  // TODO: Use functionName for filtering
     std::vector<ParsedResult> results;
 
     // Strip markdown fences first
     std::string cleanText = stripMarkdownFences(text);
 
-    // Try to parse XML directly first
+    // Try to parse standard XML function calls first (Anthropic format)
     auto xmlResults = parseXmlFunctionCalls(cleanText);
     if (!xmlResults.empty()) {
         for (auto& result : xmlResults) {
@@ -59,8 +58,54 @@ std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
         return xmlResults;
     }
 
+    // Try to parse direct function tags (e.g.,
+    // <generate_musical_sequence>JSON</generate_musical_sequence>)
+    auto directResults = parseDirectFunctionTags(cleanText, functionName);
+    if (!directResults.empty()) {
+        for (auto& result : directResults) {
+            result.source = "direct_function_tag";
+        }
+        return directResults;
+    }
+
     // If no XML found, fallback to JSON array parsing
     return parseJsonArrayFromText(cleanText);
+}
+
+std::vector<ParsedResult> ResponseParser::parseDirectFunctionTags(const std::string& text,
+                                                                  const std::string& functionName) {
+    std::vector<ParsedResult> results;
+
+    // Create regex pattern for the specific function or any function if not specified
+    std::string tagPattern = functionName.empty() ? R"(<(\w+)>([\s\S]*?)</\1>)" :
+                                                   "<" + functionName + R"(>([\s\S]*?)</" + functionName + ">";
+
+    std::regex functionTagRegex(tagPattern);
+    std::sregex_iterator tagIter(text.begin(), text.end(), functionTagRegex);
+    std::sregex_iterator tagEnd;
+
+    for (; tagIter != tagEnd; ++tagIter) {
+        std::string extractedFunctionName = functionName.empty() ? (*tagIter)[1].str() : functionName;
+        std::string content = functionName.empty() ? (*tagIter)[2].str() : (*tagIter)[1].str();
+
+        // Trim whitespace
+        content = std::regex_replace(content, std::regex(R"(^\s+|\s+$)"), "");
+
+    try {
+        // Try to parse the content as JSON
+        auto jsonData = nlohmann::json::parse(content);
+
+        // Create a ParsedResult with the JSON data
+        std::string description = "Function call: " + extractedFunctionName;
+        results.emplace_back(description, jsonData, "direct_function_tag");
+
+    } catch (const std::exception& e) {
+        // If not valid JSON, skip this tag
+        continue;
+    }
+}
+
+return results;
 }
 
 std::vector<ParsedResult> ResponseParser::parseOpenAIJsonResponse(const LLMResponse& response) {
