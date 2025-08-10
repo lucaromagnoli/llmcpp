@@ -4,6 +4,37 @@
 
 
 
+## [1.2.0] - 2025-08-10
+
+### Added
+- Add ResponseParser for provider-agnostic structured response parsing
+- implement comprehensive LLM response parsing
+- enhance ResponseParser to handle direct function tags
+
+### Other
+- Merge pull request #55 from lucaromagnoli/release/v1.1.1
+- security: remove anthropic_real_response.json
+- Fix compilation issue in ResponseParser.cpp
+- Implement parseDirectFunctionTags with simplified string-based approach
+- Fix parseDirectFunctionTags to be generic and handle unclosed tags
+- Fix parseDirectFunctionTags to throw exception for missing functionName
+- Fix isAnthropicResponse to detect any XML-like tags
+- Fix formatting after pre-commit hooks
+- SECURITY: Remove dangerous test files that leaked aideas implementation details
+- Fix formatting after pre-commit hooks
+- Remove unnecessary text wrapping in LLM response conversion
+- Fix Anthropic MessagesResponse parsing to handle tool_use content
+- Update default model in AnthropicConfig to CLAUDE_SONNET_3_7
+- Update default Anthropic model to Claude 4 Sonnet
+- Update AnthropicConfig to use the latest API version
+- Add tool_choice parameter to Anthropic MessagesRequest
+- Replace literal model names with enum usage in getAvailableModels()
+- Update formatting and anthropic version
+- Fix anthropic-version to valid 2023-06-01
+- Fix tool_choice format - should be object not array
+- Fix toLLMResponse with smart parsing parameter
+- Merge pull request #56 from lucaromagnoli/feature/response-parser
+
 ## [1.1.1] - 2025-08-09
 
 ### Fixed
