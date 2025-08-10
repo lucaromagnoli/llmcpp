@@ -1,3 +1,0 @@
-{
-  "text": "I'll help you create a sequence for a C major triad (C-E-G) using MIDI notes 60 (C4), 64 (E4), and 67 (G4) in sequence.\n\n<function_calls>\n<invoke name=\"generate_musical_sequence\">\n<parameter name=\"sequence_data\">\n[\n  {\"note\": 60, \"start\": 0.0, \"duration\": 1.0, \"velocity\": 80},\n  {\"note\": 64, \"start\": 1.0, \"duration\": 1.0, \"velocity\": 80}, \n  {\"note\": 67, \"start\": 2.0, \"duration\": 1.0, \"velocity\": 80}\n]\n</parameter>\n<parameter name=\"description\">Simple C major triad</parameter>\n</invoke>\n</function_calls>"
-}
