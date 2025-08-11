@@ -4,6 +4,13 @@
 
 
 
+## [1.3.0] - 2025-08-11
+
+### Other
+- Merge pull request #57 from lucaromagnoli/release/v1.2.0
+- Include ResponseParser.h in main llmcpp.h header
+- Merge pull request #58 from lucaromagnoli/fix/expose-response-parser
+
 ## [1.2.0] - 2025-08-10
 
 ### Added

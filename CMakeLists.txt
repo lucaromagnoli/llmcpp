@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(llmcpp VERSION 1.2.0)
+project(llmcpp VERSION 1.3.0)
 
 # Set version variables for easier access
 set(LLMCPP_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
