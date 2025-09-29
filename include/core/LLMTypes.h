@@ -1,9 +1,14 @@
 #pragma once
 #include <functional>
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
+
+// Include OpenAITypes.h to get the full definition of ToolVariant
+#include "openai/OpenAITypes.h"
 
 using json = nlohmann::json;
 
@@ -20,6 +25,7 @@ struct LLMRequestConfig {
 
     std::optional<float> temperature;  // Optional temperature (filtered by model support)
     std::optional<int> maxTokens;      // Optional max tokens
+    std::optional<std::vector<OpenAI::ToolVariant>> tools;  // Optional tools for function calling
 
     // Convenience method for any model name
     void setModel(const std::string& modelName) { model = modelName; }
@@ -31,10 +37,12 @@ struct LLMRequestConfig {
     std::string toString() const {
         std::string schemaStr = schemaObject.has_value() ? schemaObject->dump() : jsonSchema;
         std::string tempStr = temperature.has_value() ? std::to_string(*temperature) : "not set";
+        std::string toolsStr = tools.has_value() ? std::to_string(tools->size()) + " tools" : "no tools";
         return "LLMRequestConfig { client: " + client + ", model: " + getModelString() +
                ", functionName: " + functionName + ", schema: " + schemaStr +
                ", temperature: " + tempStr +
-               ", maxTokens: " + std::to_string(maxTokens.has_value() ? *maxTokens : 0) + " }";
+               ", maxTokens: " + std::to_string(maxTokens.has_value() ? *maxTokens : 0) +
+               ", tools: " + toolsStr + " }";
     }
 };
 
@@ -79,18 +87,7 @@ struct LLMRequest {
     }
 };
 
-struct LLMUsage {
-    int inputTokens = 0;
-    int outputTokens = 0;
-
-    int totalTokens() const { return inputTokens + outputTokens; }
-
-    std::string toString() const {
-        return "LLMUsage { inputTokens: " + std::to_string(inputTokens) +
-               ", outputTokens: " + std::to_string(outputTokens) +
-               ", totalTokens: " + std::to_string(totalTokens()) + " }";
-    }
-};
+// LLMUsage is now defined in OpenAITypes.h to avoid circular dependency
 
 struct LLMResponse {
     json result = json::object();

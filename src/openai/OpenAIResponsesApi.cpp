@@ -5,9 +5,11 @@
 #include <stdexcept>
 
 #include "openai/OpenAIHttpClient.h"
+#include "core/LLMTypes.h"  // Include for complete type definitions
 
 OpenAIResponsesApi::OpenAIResponsesApi(std::shared_ptr<OpenAIHttpClient> httpClient)
     : httpClient_(std::move(httpClient)) {}
+
 
 // Core Responses API methods
 OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequest& request) {
