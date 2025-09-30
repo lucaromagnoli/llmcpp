@@ -71,10 +71,18 @@ ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& request) {
     // Handle tools from extensions (if present)
     if (hasTools(request.config)) {
         json toolsJson = getToolsJson(request.config);
-        // Tools are stored as JSON - we need to deserialize them into ToolVariant
-        // For now, we'll parse them on a best-effort basis
-        // TODO: Implement proper tool deserialization
-        responsesReq.tools.clear();  // Clear any existing tools
+        responsesReq.tools.clear();
+
+        // Convert JSON tools array to ToolVariant vector
+        for (const auto& toolJson : toolsJson) {
+            if (toolJson.contains("type")) {
+                std::string toolType = toolJson["type"].get<std::string>();
+                if (toolType == "mcp") {
+                    McpTool mcpTool = McpTool::fromJson(toolJson);
+                    responsesReq.tools.push_back(mcpTool);
+                }
+            }
+        }
     }
 
     // Handle JSON schema for structured outputs
