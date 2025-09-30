@@ -3,8 +3,6 @@
 #include <openai/OpenAIMcpUtils.h>
 #include <iostream>
 
-using namespace llmcpp;
-
 // Helper to check if API key is available
 static bool hasApiKey() {
     const char* apiKey = std::getenv("OPENAI_API_KEY");
