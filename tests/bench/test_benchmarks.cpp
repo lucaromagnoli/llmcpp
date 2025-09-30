@@ -49,7 +49,7 @@ TEST_CASE("OpenAI model benchmarks (structured outputs)", "[openai][integration]
         "Return a JSON object that conforms to the provided schema with answer set to 'OK'.");
 
     // Iterate through response-capable models
-    for (const auto& modelName : OpenAI::RESPONSES_MODELS) {
+    for (const auto& modelName : RESPONSES_MODELS) {
         if (isExcludedModel(modelName)) {
             std::cout << "[BENCH] skipping model=" << modelName
                       << " (not supported for JSON schema bench)" << std::endl;

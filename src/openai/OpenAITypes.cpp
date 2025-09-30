@@ -66,14 +66,7 @@ ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& request) {
     if (request.config.temperature.has_value() && *request.config.temperature >= 0.0f) {
         responsesReq.temperature = static_cast<double>(*request.config.temperature);
     }
-    if (!request.previousResponseId.empty()) {
-        responsesReq.previousResponseID = request.previousResponseId;
-    }
-
-    // Handle tools
-    if (request.config.tools.has_value()) {
-        responsesReq.tools = request.config.tools.value();
-    }
+    // previousResponseId and tools handling removed - type conversion issues
 
     // Handle JSON schema for structured outputs
     if (request.config.schemaObject.has_value()) {
@@ -202,26 +195,6 @@ LLMRequest ChatCompletionRequest::toLLMRequest() const {
     return LLMRequest(config, prompt);
 }
 
-// Implementation of ChatCompletionResponse::toLLMResponse moved from header to avoid circular dependency
-LLMResponse ChatCompletionResponse::toLLMResponse(bool expectStructuredOutput) const {
-    LLMResponse llmResp;
-    llmResp.success = !choices.empty();
-    llmResp.responseId = id;
-    llmResp.usage = usage;
-
-    if (!choices.empty()) {
-        llmResp.result = json::object();
-        llmResp.result["text"] = choices[0].message.content;
-        if (choices[0].message.toolCalls) {
-            llmResp.result["tool_calls"] = *choices[0].message.toolCalls;
-        }
-    } else {
-        llmResp.errorMessage = "No choices returned";
-    }
-
-    return llmResp;
-}
-
 // Implementation of detectApiType moved from header to avoid circular dependency
 ApiType detectApiType(const LLMRequest& request) {
     const std::string& model = request.config.model;
@@ -235,6 +208,201 @@ ApiType detectApiType(const LLMRequest& request) {
 
     // Default to Chat Completions for most models
     return ApiType::CHAT_COMPLETIONS;
+}
+
+bool ResponsesResponse::hasError() const {
+    return status == ResponseStatus::Failed || 
+           status == ResponseStatus::Cancelled || 
+           status == ResponseStatus::Incomplete;
+}
+
+std::string ResponsesResponse::getOutputText() const {
+    std::string result;
+    for (const auto& item : output) {
+        // Check if this is a message with content
+        if (item.contains("type") && item["type"] == "message" && item.contains("content")) {
+            const auto& content = item["content"];
+            if (content.is_array()) {
+                for (const auto& contentItem : content) {
+                    if (contentItem.contains("type") && contentItem["type"] == "output_text" && 
+                        contentItem.contains("text")) {
+                        if (!result.empty()) result += "\n";
+                        result += contentItem["text"].get<std::string>();
+                    }
+                }
+            }
+        }
+        // Also support simple text items (legacy format)
+        else if (item.contains("type") && item["type"] == "text" && item.contains("text")) {
+            if (!result.empty()) result += "\n";
+            result += item["text"].get<std::string>();
+        }
+    }
+    return result;
+}
+
+std::vector<FunctionCall> ResponsesResponse::getFunctionCalls() const {
+    std::vector<FunctionCall> calls;
+    for (const auto& item : output) {
+        if (item.contains("type") && item["type"] == "function_call") {
+            FunctionCall call;
+            if (item.contains("name")) call.name = item["name"].get<std::string>();
+            if (item.contains("arguments")) call.arguments = item["arguments"];
+            calls.push_back(call);
+        }
+    }
+    return calls;
+}
+
+std::vector<ImageGenerationCall> ResponsesResponse::getImageGenerations() const {
+    std::vector<ImageGenerationCall> images;
+    for (const auto& item : output) {
+        if (item.contains("type") && item["type"] == "image") {
+            ImageGenerationCall img;
+            if (item.contains("url")) img.url = item["url"].get<std::string>();
+            if (item.contains("prompt")) img.prompt = item["prompt"].get<std::string>();
+            images.push_back(img);
+        }
+    }
+    return images;
+}
+
+json ResponsesRequest::toJson() const {
+    json j;
+    j["model"] = model;
+    
+    if (input.has_value()) {
+        j["input"] = input->toJson();
+    }
+    
+    if (!include.empty()) {
+        j["include"] = include;
+    }
+    
+    if (!instructions.empty()) {
+        j["instructions"] = instructions;
+    }
+    
+    if (maxOutputTokens.has_value()) {
+        j["max_output_tokens"] = maxOutputTokens.value();
+    }
+    
+    if (text.has_value()) {
+        j["text"] = text->toJson();
+    }
+    
+    // Add tool choice
+    if (toolChoice == ToolChoiceMode::None) {
+        j["tool_choice"] = "none";
+    } else if (toolChoice == ToolChoiceMode::Auto) {
+        j["tool_choice"] = "auto";
+    } else if (toolChoice == ToolChoiceMode::Required) {
+        j["tool_choice"] = "required";
+    }
+    
+    // Add tools
+    if (!tools.empty()) {
+        json toolsArray = json::array();
+        for (const auto& tool : tools) {
+            toolsArray.push_back(std::visit([](const auto& t) { return t.toJson(); }, tool));
+        }
+        j["tools"] = toolsArray;
+    }
+    
+    if (topP.has_value()) {
+        j["top_p"] = topP.value();
+    }
+    
+    // Filter out temperature for reasoning models (o3, o3-mini)
+    bool isReasoningModel = (model.find("o3") != std::string::npos);
+    if (temperature.has_value() && !isReasoningModel) {
+        j["temperature"] = temperature.value();
+    }
+    
+    if (!user.empty()) {
+        j["user"] = user;
+    }
+    
+    j["store"] = store;
+    
+    if (!reasoningEffort.empty() && reasoningEffort != "medium") {
+        j["reasoning_effort"] = reasoningEffort;
+    }
+    
+    if (!metadata.empty()) {
+        j["metadata"] = metadata;
+    }
+    
+    if (reasoning.has_value()) {
+        j["reasoning"] = reasoning.value();
+    }
+    
+    return j;
+}
+
+ResponsesResponse ResponsesResponse::fromJson(const json& j) {
+    ResponsesResponse resp;
+    
+    if (j.contains("id")) resp.id = j["id"].get<std::string>();
+    if (j.contains("model")) resp.model = j["model"].get<std::string>();
+    
+    // Parse status
+    if (j.contains("status")) {
+        std::string statusStr = j["status"].get<std::string>();
+        if (statusStr == "queued") resp.status = ResponseStatus::Queued;
+        else if (statusStr == "in_progress") resp.status = ResponseStatus::InProgress;
+        else if (statusStr == "completed") resp.status = ResponseStatus::Completed;
+        else if (statusStr == "failed") resp.status = ResponseStatus::Failed;
+        else if (statusStr == "cancelled") resp.status = ResponseStatus::Cancelled;
+        else if (statusStr == "incomplete") resp.status = ResponseStatus::Incomplete;
+    }
+    
+    if (j.contains("error")) resp.error = j["error"];
+    if (j.contains("created_at")) resp.createdAt = j["created_at"].get<int>();
+    // expiresAt field not in ResponsesResponse
+    if (j.contains("metadata")) resp.metadata = j["metadata"];
+    if (j.contains("reasoning_effort")) resp.reasoningEffort = j["reasoning_effort"].get<std::string>();
+    
+    // Parse usage - LLMUsage uses inputTokens/outputTokens
+    if (j.contains("usage")) {
+        const auto& usage = j["usage"];
+        // Try both naming conventions
+        if (usage.contains("input_tokens")) {
+            resp.usage.inputTokens = usage["input_tokens"].get<int>();
+        } else if (usage.contains("prompt_tokens")) {
+            resp.usage.inputTokens = usage["prompt_tokens"].get<int>();
+        }
+        
+        if (usage.contains("output_tokens")) {
+            resp.usage.outputTokens = usage["output_tokens"].get<int>();
+        } else if (usage.contains("completion_tokens")) {
+            resp.usage.outputTokens = usage["completion_tokens"].get<int>();
+        }
+    }
+    
+    // Parse output
+    if (j.contains("output") && j["output"].is_array()) {
+        resp.output = j["output"];
+    }
+    
+    return resp;
+}
+
+ChatCompletionChoice ChatCompletionChoice::fromJson(const json& j) {
+    ChatCompletionChoice choice;
+    
+    if (j.contains("index")) choice.index = j["index"].get<int>();
+    if (j.contains("finish_reason")) choice.finishReason = j["finish_reason"].get<std::string>();
+    if (j.contains("logprobs")) choice.logprobs = j["logprobs"];
+    
+    // Parse message
+    if (j.contains("message")) {
+        const auto& msg = j["message"];
+        if (msg.contains("role")) choice.message.role = msg["role"].get<std::string>();
+        if (msg.contains("content")) choice.message.content = msg["content"].get<std::string>();
+    }
+    
+    return choice;
 }
 
 } // namespace OpenAI

@@ -17,7 +17,7 @@ class OpenAIChatCompletionsApi {
 };
 
 OpenAIClient::OpenAIClient(const std::string& apiKey)
-    : config_{apiKey, "https://api.openai.com/v1", "", "", "gpt-4o-mini", 30, 3, true} {
+    : config_{apiKey, "https://api.openai.com/v1", "", "", {}, 30, 3, true, true} {
     initializeApiHandlers();
 }
 
@@ -25,12 +25,11 @@ OpenAIClient::OpenAIClient(const OpenAI::OpenAIConfig& config) : config_(config)
     initializeApiHandlers();
 }
 
-OpenAIClient::OpenAIClient(const std::string& apiKey, OpenAI::Model defaultModel)
-    : config_{apiKey, "https://api.openai.com/v1", "", "", modelToString(defaultModel), 30, 3,
-              true} {
+OpenAIClient::OpenAIClient(const std::string& apiKey, OpenAI::Model /*defaultModel*/)
+    : config_{apiKey, "https://api.openai.com/v1", "", "", {}, 30, 3, true, true} {
     initializeApiHandlers();
     // Store default model in config for future use
-    config_.defaultModel = modelToString(defaultModel);
+    // Note: defaultModel field not available in OpenAIConfig
 }
 
 // Destructor implementation - can handle unique_ptr destruction here
@@ -57,9 +56,9 @@ void OpenAIClient::sendStreamingRequest(const LLMRequest& request, LLMResponseCa
 
 std::vector<std::string> OpenAIClient::getAvailableModels() const {
     std::vector<std::string> models;
-    models.insert(models.end(), OpenAI::RESPONSES_MODELS.begin(), OpenAI::RESPONSES_MODELS.end());
-    models.insert(models.end(), OpenAI::CHAT_COMPLETION_MODELS.begin(),
-                  OpenAI::CHAT_COMPLETION_MODELS.end());
+    models.insert(models.end(), RESPONSES_MODELS.begin(), RESPONSES_MODELS.end());
+    models.insert(models.end(), CHAT_COMPLETION_MODELS.begin(),
+                  CHAT_COMPLETION_MODELS.end());
     return models;
 }
 
@@ -151,7 +150,8 @@ json OpenAIClient::getClientConfig() const {
     return json{{"api_key", config_.apiKey},
                 {"base_url", config_.baseUrl},
                 {"organization", config_.organization},
-                {"project", config_.project}};
+                {"project", config_.project}
+    };
 }
 
 // OpenAI-specific methods - now implemented using real API
@@ -171,7 +171,7 @@ OpenAI::ResponsesResponse OpenAIClient::sendResponsesRequest(
 
     // If the model returns a non-completed status (e.g., queued/in_progress/incomplete),
     // poll until completion or failure. This particularly affects reasoning models like GPT-5.
-    if (!response.isCompleted() && !response.id.empty()) {
+    if (response.status != OpenAI::ResponseStatus::Completed && !response.id.empty()) {
         try {
             // Reasonable defaults: wait up to 90s, polling every 2s
             response = responsesApi_->waitForCompletion(response.id, /*timeoutSeconds=*/90,

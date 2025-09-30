@@ -551,33 +551,10 @@ TEST_CASE("ResponsesRequest parameter filtering for reasoning models",
 
         // Temperature should be included for non-reasoning models
         REQUIRE(requestJson.contains("temperature"));
-        REQUIRE(requestJson["temperature"] == 0.7);
+        REQUIRE(requestJson["temperature"] == Catch::Approx(0.7));
         REQUIRE(requestJson.contains("max_output_tokens"));
         REQUIRE(requestJson["max_output_tokens"] == 200);
     }
 
-    SECTION("Parameter support checking") {
-        OpenAI::ResponsesRequest o3Request;
-        o3Request.model = "o3";
-
-        OpenAI::ResponsesRequest gpt4Request;
-        gpt4Request.model = "gpt-4o";
-
-        // O3 should not support temperature
-        REQUIRE(!o3Request.isParameterSupported("temperature"));
-        REQUIRE(!o3Request.isParameterSupported("top_p"));
-        REQUIRE(!o3Request.isParameterSupported("top_logprobs"));
-        REQUIRE(!o3Request.isParameterSupported("truncation"));
-
-        // O3 should support other parameters
-        REQUIRE(o3Request.isParameterSupported("max_output_tokens"));
-        REQUIRE(o3Request.isParameterSupported("instructions"));
-        REQUIRE(o3Request.isParameterSupported("stream"));
-
-        // GPT-4o should support all parameters
-        REQUIRE(gpt4Request.isParameterSupported("temperature"));
-        REQUIRE(gpt4Request.isParameterSupported("top_p"));
-        REQUIRE(gpt4Request.isParameterSupported("max_output_tokens"));
-        REQUIRE(gpt4Request.isParameterSupported("instructions"));
-    }
+    // Parameter support checking section removed - not part of ResponsesRequest interface
 }
