@@ -158,9 +158,9 @@ class OpenAIHttpClient::HttpClientImpl {
     std::string extractErrorMessage(const std::string& body, int statusCode) const {
         try {
             auto errorJson = json::parse(body);
-            auto error = OpenAI::safeGetOptionalJson<json>(errorJson, "error");
+            auto error = safeGetOptionalJson<json>(errorJson, "error");
             if (error.has_value()) {
-                auto message = OpenAI::safeGetOptionalJson<std::string>(error.value(), "message");
+                auto message = safeGetOptionalJson<std::string>(error.value(), "message");
                 if (message.has_value()) {
                     return message.value();
                 }
@@ -291,9 +291,9 @@ OpenAIHttpClient::HttpResponse OpenAIHttpClient::handleHttpError(int statusCode,
 
     try {
         auto errorJson = json::parse(body);
-        auto error = OpenAI::safeGetOptionalJson<json>(errorJson, "error");
+        auto error = safeGetOptionalJson<json>(errorJson, "error");
         if (error.has_value()) {
-            auto message = OpenAI::safeGetOptionalJson<std::string>(error.value(), "message");
+            auto message = safeGetOptionalJson<std::string>(error.value(), "message");
             if (message.has_value()) {
                 response.errorMessage = message.value();
             } else {

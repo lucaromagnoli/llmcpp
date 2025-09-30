@@ -30,28 +30,27 @@ class OpenAIResponsesApi {
      */
 
     // Create a new response (synchronous)
-    OpenAI::ResponsesResponse create(const OpenAI::ResponsesRequest& request);
+    ResponsesResponse create(const ResponsesRequest& request);
 
     // Create a new response (asynchronous)
-    std::future<OpenAI::ResponsesResponse> createAsync(
-        const OpenAI::ResponsesRequest& request,
+    std::future<ResponsesResponse> createAsync(
+        const ResponsesRequest& request,
         std::function<void(const OpenAI::ResponsesResponse&)> callback = nullptr);
 
     // Create with streaming support
-    std::future<OpenAI::ResponsesResponse> createStreaming(
-        const OpenAI::ResponsesRequest& request,
-        std::function<void(const std::string&)> streamCallback,
-        std::function<void(const OpenAI::ResponsesResponse&)> finalCallback = nullptr);
+    std::future<ResponsesResponse> createStreaming(
+        const ResponsesRequest& request, std::function<void(const std::string&)> streamCallback,
+        std::function<void(const ResponsesResponse&)> finalCallback = nullptr);
 
     /**
      * Response management methods
      */
 
     // Retrieve an existing response by ID
-    OpenAI::ResponsesResponse retrieve(const std::string& responseId);
+    ResponsesResponse retrieve(const std::string& responseId);
 
     // Cancel an in-progress background response
-    OpenAI::ResponsesResponse cancel(const std::string& responseId);
+    ResponsesResponse cancel(const std::string& responseId);
 
     // Delete a stored response
     bool deleteResponse(const std::string& responseId);
@@ -68,16 +67,15 @@ class OpenAIResponsesApi {
     bool isProcessing(const std::string& responseId);
 
     // Wait for a background response to complete
-    OpenAI::ResponsesResponse waitForCompletion(const std::string& responseId,
-                                                int timeoutSeconds = 300,
-                                                int pollIntervalSeconds = 2);
+    ResponsesResponse waitForCompletion(const std::string& responseId, int timeoutSeconds = 300,
+                                        int pollIntervalSeconds = 2);
 
     /**
      * Streaming helpers
      */
 
     // Resume streaming from a specific sequence number
-    std::future<OpenAI::ResponsesResponse> resumeStreaming(
+    std::future<ResponsesResponse> resumeStreaming(
         const std::string& responseId, int startingAfter = -1,
         std::function<void(const std::string&)> streamCallback = nullptr);
 
@@ -86,12 +84,12 @@ class OpenAIResponsesApi {
      */
 
     // Create a follow-up response in a conversation
-    OpenAI::ResponsesResponse continueConversation(
+    ResponsesResponse continueConversation(
         const std::string& previousResponseId, const OpenAI::ResponsesInput& newInput,
         const std::optional<std::vector<OpenAI::ToolVariant>>& tools = std::nullopt);
 
     // Fork a conversation from a specific response
-    OpenAI::ResponsesResponse forkConversation(
+    ResponsesResponse forkConversation(
         const std::string& forkFromResponseId, const OpenAI::ResponsesInput& newInput,
         const std::optional<std::vector<OpenAI::ToolVariant>>& tools = std::nullopt);
 
@@ -100,13 +98,12 @@ class OpenAIResponsesApi {
      */
 
     // Handle MCP approval requests
-    OpenAI::ResponsesResponse approveMcpRequest(const std::string& responseId,
-                                                const std::string& approvalRequestId,
-                                                bool approve = true);
+    ResponsesResponse approveMcpRequest(const std::string& responseId,
+                                        const std::string& approvalRequestId, bool approve = true);
 
     // Submit function call outputs
-    OpenAI::ResponsesResponse submitFunctionOutputs(
-        const std::string& responseId, const std::vector<OpenAI::FunctionCallOutput>& outputs);
+    ResponsesResponse submitFunctionOutputs(const std::string& responseId,
+                                            const std::vector<OpenAI::FunctionCallOutput>& outputs);
 
     /**
      * Configuration and validation
@@ -116,7 +113,7 @@ class OpenAIResponsesApi {
     bool validateRequest(const OpenAI::ResponsesRequest& request, std::string& errorMessage) const;
 
     // Get supported models for the Responses API
-    std::vector<std::string> getSupportedModels() const;
+    [[nodiscard]] std::vector<std::string> getSupportedModels() const;
 
     // Check if a model supports specific features
     bool supportsBackgroundProcessing(const std::string& model) const;
@@ -135,32 +132,32 @@ class OpenAIResponsesApi {
      */
 
     // Build the request URL for different endpoints
-    std::string buildCreateUrl() const;
-    std::string buildRetrieveUrl(const std::string& responseId) const;
-    std::string buildCancelUrl(const std::string& responseId) const;
-    std::string buildDeleteUrl(const std::string& responseId) const;
-    std::string buildInputItemsUrl(const std::string& responseId) const;
+    [[nodiscard]] std::string buildCreateUrl() const;
+    [[nodiscard]] std::string buildRetrieveUrl(const std::string& responseId) const;
+    [[nodiscard]] std::string buildCancelUrl(const std::string& responseId) const;
+    [[nodiscard]] std::string buildDeleteUrl(const std::string& responseId) const;
+    [[nodiscard]] std::string buildInputItemsUrl(const std::string& responseId) const;
 
     // Process streaming events
     void processStreamEvent(const std::string& event,
                             std::function<void(const std::string&)> streamCallback);
 
     // Handle different response types
-    OpenAI::ResponsesResponse processResponse(const json& responseJson);
+    ResponsesResponse processResponse(const json& responseJson);
 
     // Error handling
     void handleApiError(const json& errorResponse) const;
 
     // Request preprocessing
-    json preprocessRequest(const OpenAI::ResponsesRequest& request) const;
+    [[nodiscard]] json preprocessRequest(const ResponsesRequest& request) const;
     void addDefaultParameters(json& requestJson) const;
     void validateAndProcessTools(json& requestJson) const;
 
     // Response postprocessing
-    void postprocessResponse(OpenAI::ResponsesResponse& response) const;
-    void extractConvenienceFields(OpenAI::ResponsesResponse& response) const;
+    void postprocessResponse(ResponsesResponse& response) const;
+    void extractConvenienceFields(ResponsesResponse& response) const;
 
     // Polling helpers for background tasks
-    OpenAI::ResponsesResponse pollForCompletion(const std::string& responseId, int maxAttempts,
-                                                int intervalSeconds);
+    ResponsesResponse pollForCompletion(const std::string& responseId, int maxAttempts,
+                                        int intervalSeconds);
 };

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "core/LLMTypes.h"
 #include "openai/OpenAITypes.h"
 
 // Helper to load the sample response
@@ -165,65 +166,65 @@ TEST_CASE("OpenAI Response Parsing - Edge Cases", "[openai][parsing]") {
 TEST_CASE("JSON utility functions work correctly") {
     SECTION("safeGetJson with existing non-null value") {
         json j = {{"key", "value"}};
-        std::string result = OpenAI::safeGetJson(j, "key", std::string("default"));
+        std::string result = safeGetJson(j, "key", std::string("default"));
         REQUIRE(result == "value");
     }
 
     SECTION("safeGetJson with missing key uses default") {
         json j = {{"other", "value"}};
-        std::string result = OpenAI::safeGetJson(j, "missing", std::string("default"));
+        std::string result = safeGetJson(j, "missing", std::string("default"));
         REQUIRE(result == "default");
     }
 
     SECTION("safeGetJson with null value uses default") {
         json j = {{"key", nullptr}};
-        std::string result = OpenAI::safeGetJson(j, "key", std::string("default"));
+        std::string result = safeGetJson(j, "key", std::string("default"));
         REQUIRE(result == "default");
     }
 
     SECTION("safeGetOptionalJson with existing non-null value") {
         json j = {{"key", "value"}};
-        auto result = OpenAI::safeGetOptionalJson<std::string>(j, "key");
+        auto result = safeGetOptionalJson<std::string>(j, "key");
         REQUIRE(result.has_value());
         REQUIRE(result.value() == "value");
     }
 
     SECTION("safeGetOptionalJson with missing key returns nullopt") {
         json j = {{"other", "value"}};
-        auto result = OpenAI::safeGetOptionalJson<std::string>(j, "missing");
+        auto result = safeGetOptionalJson<std::string>(j, "missing");
         REQUIRE_FALSE(result.has_value());
     }
 
     SECTION("safeGetOptionalJson with null value returns nullopt") {
         json j = {{"key", nullptr}};
-        auto result = OpenAI::safeGetOptionalJson<std::string>(j, "key");
+        auto result = safeGetOptionalJson<std::string>(j, "key");
         REQUIRE_FALSE(result.has_value());
     }
 
     SECTION("safeGetRequiredJson with existing non-null value") {
         json j = {{"key", "value"}};
-        std::string result = OpenAI::safeGetRequiredJson<std::string>(j, "key");
+        std::string result = safeGetRequiredJson<std::string>(j, "key");
         REQUIRE(result == "value");
     }
 
     SECTION("safeGetRequiredJson with missing key throws") {
         json j = {{"other", "value"}};
-        REQUIRE_THROWS_AS(OpenAI::safeGetRequiredJson<std::string>(j, "missing"),
+        REQUIRE_THROWS_AS(safeGetRequiredJson<std::string>(j, "missing"),
                           std::runtime_error);
     }
 
     SECTION("safeGetRequiredJson with null value throws") {
         json j = {{"key", nullptr}};
-        REQUIRE_THROWS_AS(OpenAI::safeGetRequiredJson<std::string>(j, "key"), std::runtime_error);
+        REQUIRE_THROWS_AS(safeGetRequiredJson<std::string>(j, "key"), std::runtime_error);
     }
 
     SECTION("safeGetJson works with different types") {
         json j = {{"int_key", 42}, {"bool_key", true}, {"double_key", 3.14}, {"null_key", nullptr}};
 
-        REQUIRE(OpenAI::safeGetJson(j, "int_key", 0) == 42);
-        REQUIRE(OpenAI::safeGetJson(j, "bool_key", false) == true);
-        REQUIRE(OpenAI::safeGetJson(j, "double_key", 0.0) == 3.14);
-        REQUIRE(OpenAI::safeGetJson(j, "null_key", 999) == 999);
-        REQUIRE(OpenAI::safeGetJson(j, "missing_key", 999) == 999);
+        REQUIRE(safeGetJson(j, "int_key", 0) == 42);
+        REQUIRE(safeGetJson(j, "bool_key", false) == true);
+        REQUIRE(safeGetJson(j, "double_key", 0.0) == 3.14);
+        REQUIRE(safeGetJson(j, "null_key", 999) == 999);
+        REQUIRE(safeGetJson(j, "missing_key", 999) == 999);
     }
 }

@@ -10,8 +10,8 @@
 namespace llmcpp {
 
 std::vector<ParsedResult> ResponseParser::parseStructuredResponse(const LLMResponse& response,
-                                                                  const std::string& providerName,
-                                                                  const std::string& functionName) {
+                                                                  const std::string& /*providerName*/,
+                                                                  const std::string& /*functionName*/) {
     if (!response.success) {
         return {};
     }
@@ -24,7 +24,7 @@ std::vector<ParsedResult> ResponseParser::parseStructuredResponse(const LLMRespo
 }
 
 std::vector<ParsedResult> ResponseParser::parseAnthropicXmlResponse(
-    const std::string& text, const std::string& functionName) {
+    const std::string& text, const std::string& /*functionName*/) {
     // Anthropic returns structured JSON in "text" field, often wrapped in markdown fences
     try {
         auto jsonResponse = nlohmann::json::parse(text);

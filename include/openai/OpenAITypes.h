@@ -7,10 +7,112 @@
 #include <vector>
 
 #include "core/LLMTypes.h"
+#include "utils/JsonUtils.h"
 
 using json = nlohmann::json;
 
 namespace OpenAI {
+
+// Forward declarations
+struct FunctionTool;
+struct WebSearchTool;
+struct FileSearchTool;
+struct CodeInterpreterTool;
+struct ImageGenerationTool;
+struct McpTool;
+
+// Output types - full definitions needed for use in vectors
+struct FunctionCall {
+    std::string id;
+    std::string name;
+    json arguments;
+};
+
+struct ImageGenerationCall {
+    std::string url;
+    std::string prompt;
+    std::optional<json> result;
+};
+
+struct OutputMessage {
+    std::string role;
+    std::string content;
+};
+
+struct WebSearchCall {
+    std::string query;
+    json results;
+};
+
+struct McpApprovalRequest {
+    std::string toolName;
+    json parameters;
+    std::string requestId;
+};
+
+// Enums and types that need to be defined early
+enum class ToolChoiceMode { None, Auto, Required };
+enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled, Incomplete };
+enum class ApiType {
+    RESPONSES,         // New structured output API
+    CHAT_COMPLETIONS,  // Traditional conversation API
+    AUTO_DETECT
+};
+
+// Text output configuration for structured responses
+class TextOutputConfig {
+   public:
+    TextOutputConfig() = default;
+    TextOutputConfig(std::string name, json schema, bool strict = true)
+        : formatName(std::move(name)), formatSchema(std::move(schema)), isStrict(strict) {}
+
+    json toJson() const {
+        if (formatName.empty()) {
+            return json{{"format", {{"type", "text"}}}};
+        }
+
+        json formatObj = {{"type", "json_schema"},
+                          {"name", formatName},
+                          {"strict", isStrict},
+                          {"schema", formatSchema}};
+
+        return json{{"format", formatObj}};
+    }
+
+    static TextOutputConfig fromJson(const json& j) {
+        if (!j.contains("format")) {
+            return TextOutputConfig{};
+        }
+
+        const auto& format = j["format"];
+        if (!format.contains("name") || !format.contains("json_schema")) {
+            return TextOutputConfig{};
+        }
+
+        bool strict = true;
+        if (format.contains("json_schema") &&
+            format["json_schema"].contains("additionalProperties")) {
+            strict = !format["json_schema"]["additionalProperties"].get<bool>();
+        }
+
+        return TextOutputConfig{format["name"].get<std::string>(), format["json_schema"], strict};
+    }
+
+   private:
+    std::string formatName;
+    json formatSchema;
+    bool isStrict = true;
+};
+
+// OpenAI-specific tool variant
+using ToolVariant = std::variant<FunctionTool, WebSearchTool, FileSearchTool, CodeInterpreterTool,
+                                 ImageGenerationTool, McpTool>;
+
+// Helper functions to work with tools in the generic LLMRequestConfig
+// Declarations - implementations are in OpenAITypes.cpp after tool definitions
+void setTools(LLMRequestConfig& config, const std::vector<ToolVariant>& tools);
+bool hasTools(const LLMRequestConfig& config);
+json getToolsJson(const LLMRequestConfig& config);
 
 /**
  * OpenAI model names as strongly typed enum
@@ -172,45 +274,6 @@ struct Message {
         return msg;
     }
 };
-
-/**
- * Utility function for safely extracting JSON values with default fallbacks
- * Similar to Python's dict.get() method
- */
-template <typename T>
-T safeGetJson(const json& j, const std::string& key, const T& defaultValue = T{}) {
-    if (j.contains(key) && !j[key].is_null()) {
-        return j[key].get<T>();
-    }
-    return defaultValue;
-}
-
-/**
- * Utility function for safely extracting optional JSON values
- * Returns std::nullopt if key doesn't exist or is null
- */
-template <typename T>
-std::optional<T> safeGetOptionalJson(const json& j, const std::string& key) {
-    if (j.contains(key) && !j[key].is_null()) {
-        return j[key].get<T>();
-    }
-    return std::nullopt;
-}
-
-/**
- * Utility function for safely extracting required JSON values
- * Throws std::runtime_error with helpful message if key is missing or null
- */
-template <typename T>
-T safeGetRequiredJson(const json& j, const std::string& key) {
-    if (!j.contains(key)) {
-        throw std::runtime_error("Required JSON key '" + key + "' is missing");
-    }
-    if (j[key].is_null()) {
-        throw std::runtime_error("Required JSON key '" + key + "' is null");
-    }
-    return j[key].get<T>();
-}
 
 /**
  * OpenAI Responses API Types (Modern Structured Output API)
@@ -390,39 +453,181 @@ struct ResponsesInput {
     }
 };
 
-// Text output configuration for structured responses
-class TextOutputConfig {
-   public:
-    TextOutputConfig() = default;
-    TextOutputConfig(std::string name, json schema, bool strict = true)
-        : formatName(std::move(name)), formatSchema(std::move(schema)), isStrict(strict) {}
+// Responses API request structure
+struct ResponsesRequest {
+    std::string model;
+    std::optional<ResponsesInput> input;
+    std::vector<std::string> include;
+    std::string instructions;
+    std::optional<int> maxOutputTokens;
+    std::optional<TextOutputConfig> text;
+    ToolChoiceMode toolChoice = ToolChoiceMode::Auto;
+    std::vector<ToolVariant> tools;
+    std::optional<float> topP;
+    std::optional<float> temperature;
+    std::string user;
+    bool store = true;
+    std::string reasoningEffort = "medium";
+    std::string metadata;
+    std::optional<json> reasoning;
+
+    static ResponsesRequest fromLLMRequest(const struct LLMRequest& request);
+    static ResponsesRequest fromJson(const json& j);
+    json toJson() const;
+};
+
+// Responses API response structure
+struct ResponsesResponse {
+    std::string id;
+    std::string object = "response";
+    double createdAt = 0.0;
+    ResponseStatus status = ResponseStatus::Completed;
+    std::string model;
+    std::optional<json> error;
+    std::optional<json> incompleteDetails;
+    std::optional<std::string> instructions;
+    int maxOutputTokens = 0;
+    std::optional<std::string> outputText;
+    bool parallelToolCalls = false;
+    std::optional<std::string> previousResponseId;
+    std::optional<json> reasoning;
+    bool store = true;
+    std::optional<json> text;
+    std::optional<json> toolChoice;
+    std::vector<json> tools;
+    std::optional<float> topP;
+    std::optional<std::string> truncation;
+    std::optional<std::string> user;
+    std::optional<json> metadata;
+    std::optional<std::string> reasoningEffort;
+    LLMUsage usage;
+    std::vector<json> output;
+
+    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const;
+    std::string getOutputText() const;
+    std::vector<FunctionCall> getFunctionCalls() const;
+    std::vector<ImageGenerationCall> getImageGenerations() const;
+    bool hasError() const;
+    bool isCompleted() const { return status == ResponseStatus::Completed; }
+    static ResponsesResponse fromJson(const json& j);
+};
+
+// OpenAI configuration structure
+struct OpenAIConfig {
+    std::string apiKey;
+    std::string baseUrl = "https://api.openai.com/v1";
+    std::string organization;
+    std::string project;
+    std::map<std::string, std::string> headers;
+    int timeoutSeconds = 30;
+    int maxRetries = 3;
+    bool verifySSL = true;
+    bool enableDeprecationWarnings = true;
 
     json toJson() const {
-        if (formatName.empty()) {
-            return json{{"format", {{"type", "text"}}}};
-        }
-
-        json formatObj = {{"type", "json_schema"},
-                          {"name", formatName},
-                          {"schema", formatSchema},
-                          {"strict", isStrict}};
-        return json{{"format", formatObj}};
+        json j = {{"api_key", apiKey},
+                  {"base_url", baseUrl},
+                  {"timeout_seconds", timeoutSeconds},
+                  {"max_retries", maxRetries},
+                  {"enable_deprecation_warnings", enableDeprecationWarnings}};
+        if (!organization.empty()) j["organization"] = organization;
+        if (!project.empty()) j["project"] = project;
+        return j;
     }
 
-    static TextOutputConfig fromJson(const json& j) {
-        TextOutputConfig config;
-        if (j.contains("format") && j["format"].contains("name")) {
-            config.formatName = j["format"]["name"].get<std::string>();
-            config.formatSchema = j["format"]["schema"];
-            config.isStrict = j["format"].value("strict", true);
-        }
+    static OpenAIConfig fromJson(const json& j) {
+        OpenAIConfig config;
+        if (j.contains("api_key")) config.apiKey = j["api_key"].get<std::string>();
+        if (j.contains("base_url")) config.baseUrl = j["base_url"].get<std::string>();
+        if (j.contains("organization")) config.organization = j["organization"].get<std::string>();
+        if (j.contains("project")) config.project = j["project"].get<std::string>();
+        if (j.contains("timeout_seconds")) config.timeoutSeconds = j["timeout_seconds"].get<int>();
+        if (j.contains("max_retries")) config.maxRetries = j["max_retries"].get<int>();
+        if (j.contains("enable_deprecation_warnings"))
+            config.enableDeprecationWarnings = j["enable_deprecation_warnings"].get<bool>();
         return config;
     }
+};
 
-   private:
-    std::string formatName;
-    json formatSchema;
-    bool isStrict = true;
+// TextOutputConfig already defined at top of namespace
+
+// Chat message structure for Chat Completion API
+struct ChatMessage {
+    std::string role;
+    std::string content;
+    std::string name;
+
+    json toJson() const {
+        json j = {{"role", role}, {"content", content}};
+        if (!name.empty()) {
+            j["name"] = name;
+        }
+        return j;
+    }
+
+    static ChatMessage fromJson(const json& j) {
+        ChatMessage msg;
+        msg.role = j.at("role").get<std::string>();
+        msg.content = j.at("content").get<std::string>();
+        if (j.contains("name")) {
+            msg.name = j["name"].get<std::string>();
+        }
+        return msg;
+    }
+};
+
+// Chat Completion API structures
+struct ChatCompletionRequest {
+    std::string model;
+    std::vector<ChatMessage> messages;
+    std::optional<float> temperature;
+    std::optional<int> maxTokens;
+    std::optional<std::vector<std::string>> stop;
+    std::optional<bool> stream;
+    std::optional<std::string> user;
+    std::optional<std::vector<ToolVariant>> tools;
+    std::optional<ToolChoiceMode> toolChoice;
+    std::optional<TextOutputConfig> text;
+
+    json toJson() const {
+        json j = {{"model", model}};
+        json msgs = json::array();
+        for (const auto& msg : messages) {
+            msgs.push_back(msg.toJson());
+        }
+        j["messages"] = msgs;
+        if (temperature.has_value()) j["temperature"] = temperature.value();
+        if (maxTokens.has_value()) j["max_tokens"] = maxTokens.value();
+        if (stop.has_value()) j["stop"] = stop.value();
+        if (stream.has_value()) j["stream"] = stream.value();
+        if (user.has_value()) j["user"] = user.value();
+        return j;
+    }
+
+    static ChatCompletionRequest fromLLMRequest(const struct LLMRequest& request);
+    struct LLMRequest toLLMRequest() const;
+    static ChatCompletionRequest fromJson(const json& j);
+};
+
+struct ChatCompletionChoice {
+    int index;
+    Message message;
+    std::optional<std::string> finishReason;
+    std::optional<json> logprobs;
+
+    static ChatCompletionChoice fromJson(const json& j);
+};
+
+struct ChatCompletionResponse {
+    std::string id;
+    std::string object;
+    int64_t created;
+    std::string model;
+    std::vector<ChatCompletionChoice> choices;
+    std::optional<std::string> systemFingerprint;
+    LLMUsage usage;
+
+    static ChatCompletionResponse fromJson(const json& j);
 };
 
 // Tool definitions
@@ -549,10 +754,11 @@ struct McpTool {
     }
 };
 
+// Define ToolVariant after all tool structs are complete
 using ToolVariant = std::variant<FunctionTool, WebSearchTool, FileSearchTool, CodeInterpreterTool,
                                  ImageGenerationTool, McpTool>;
 
-enum class ToolChoiceMode { None, Auto, Required };
+// ToolChoiceMode enum moved to top of namespace
 
 inline std::string toString(ToolChoiceMode mode) {
     switch (mode) {
@@ -608,8 +814,7 @@ struct McpApprovalResponse {
     }
 };
 
-// Response status enumeration
-enum class ResponseStatus { Queued, InProgress, Completed, Failed, Cancelled, Incomplete };
+// ResponseStatus enum moved to top of namespace
 
 inline std::string toString(ResponseStatus status) {
     switch (status) {
@@ -629,6 +834,9 @@ inline std::string toString(ResponseStatus status) {
     return "";
 }
 
+// Forward declaration for detectApiType
+ApiType detectApiType(const LLMRequest& request);
+
 inline ResponseStatus responseStatusFromString(const std::string& str) {
     if (str == "queued") return ResponseStatus::Queued;
     if (str == "in_progress") return ResponseStatus::InProgress;
@@ -639,385 +847,30 @@ inline ResponseStatus responseStatusFromString(const std::string& str) {
     throw std::invalid_argument("Invalid response status: " + str);
 }
 
-// Responses API request (complete implementation)
-struct ResponsesRequest {
-    // Required fields
-    std::string model;
-    std::optional<ResponsesInput> input;
+// Close the OpenAI namespace
 
-    // Optional configuration (all truly optional - can be omitted entirely)
-    std::optional<std::vector<std::string>> include;  // What to include in response
-    std::optional<std::string> instructions;          // System-level instructions
-    std::optional<int> maxOutputTokens;
-    std::optional<int> maxToolCalls;  // Maximum number of tool calls
-    std::optional<std::unordered_map<std::string, std::string>> metadata;
-    std::optional<bool> parallelToolCalls;
-    std::optional<std::string> previousResponseID;  // For conversation continuity
-    std::optional<std::string> prompt;              // Alternative to instructions
-    std::optional<json> reasoning;                  // Reasoning configuration
-    std::optional<std::string> serviceTier;  // "auto", "default", "flex", "scale", "priority"
-    std::optional<bool> store;               // Whether to store for retrieval
-    std::optional<bool> stream;              // Enable streaming
-    std::optional<bool> background;          // Background processing for long tasks
-    std::optional<double> temperature;
-    std::optional<TextOutputConfig> text;  // Output format configuration
-    ToolChoiceMode toolChoice = ToolChoiceMode::Auto;
-    std::optional<std::vector<ToolVariant>> tools;
-    std::optional<int> topLogprobs;  // Number of top logprobs to return
-    std::optional<double> topP;
-    std::optional<std::string> truncation;       // "auto" or "disabled"
-    std::optional<std::string> user;             // User identifier
-    std::optional<std::string> reasoningEffort;  // "low", "medium", "high" for reasoning models
+}  // namespace OpenAI
 
-    /**
-     * Check if a parameter is supported for the current model
-     */
-    bool isParameterSupported(const std::string& paramName) const {
-        // Convert model string to enum for easier checking
-        auto modelEnum = modelFromString(model);
+// Make OpenAI types globally accessible
+using OpenAI::FunctionCallOutput;
+using OpenAI::McpApprovalResponse;
+using OpenAI::OpenAIConfig;
+using OpenAI::ResponsesRequest;
+using OpenAI::ResponsesResponse;
+using OpenAI::ResponseStatus;
+using OpenAI::ToolVariant;
 
-        // Reasoning models (O-series + GPT-5) have different parameter support
-        if (modelEnum == Model::GPT_5 || modelEnum == Model::GPT_5_Mini ||
-            modelEnum == Model::GPT_5_Nano || modelEnum == Model::O3 ||
-            modelEnum == Model::O3_Mini || modelEnum == Model::O1 || modelEnum == Model::O1_Mini ||
-            modelEnum == Model::O1_Preview || modelEnum == Model::O1_Pro ||
-            modelEnum == Model::O4_Mini || modelEnum == Model::O4_Mini_Deep_Research) {
-            // Parameters NOT supported by reasoning models
-            if (paramName == "temperature" || paramName == "top_p" || paramName == "top_logprobs" ||
-                paramName == "truncation") {
-                return false;
-            }
-        }
-
-        // All other parameters are supported by all models
-        return true;
-    }
-
-    json toJson() const {
-        json j = {{"model", model}, {"tool_choice", toString(toolChoice)}};
-
-        // Only include parameters that are supported by the model
-        if (input) j["input"] = input->toJson();
-        if (include && isParameterSupported("include")) j["include"] = *include;
-        if (instructions && isParameterSupported("instructions")) j["instructions"] = *instructions;
-        if (maxOutputTokens && isParameterSupported("max_output_tokens"))
-            j["max_output_tokens"] = *maxOutputTokens;
-        if (maxToolCalls && isParameterSupported("max_tool_calls"))
-            j["max_tool_calls"] = *maxToolCalls;
-        if (metadata && isParameterSupported("metadata")) j["metadata"] = *metadata;
-        if (parallelToolCalls && isParameterSupported("parallel_tool_calls"))
-            j["parallel_tool_calls"] = *parallelToolCalls;
-        if (previousResponseID && isParameterSupported("previous_response_id"))
-            j["previous_response_id"] = *previousResponseID;
-        if (prompt && isParameterSupported("prompt")) j["prompt"] = *prompt;
-        if (reasoning && isParameterSupported("reasoning")) j["reasoning"] = *reasoning;
-        if (serviceTier && isParameterSupported("service_tier")) j["service_tier"] = *serviceTier;
-        if (store && isParameterSupported("store")) j["store"] = *store;
-        if (stream && isParameterSupported("stream")) j["stream"] = *stream;
-        if (background && isParameterSupported("background")) j["background"] = *background;
-        if (temperature && isParameterSupported("temperature")) j["temperature"] = *temperature;
-        if (text && isParameterSupported("text")) j["text"] = text->toJson();
-        if (topLogprobs && isParameterSupported("top_logprobs")) j["top_logprobs"] = *topLogprobs;
-        if (topP && isParameterSupported("top_p")) j["top_p"] = *topP;
-        if (truncation && isParameterSupported("truncation")) j["truncation"] = *truncation;
-        if (user && isParameterSupported("user")) j["user"] = *user;
-        if (reasoningEffort && isParameterSupported("reasoning_effort"))
-            j["reasoning_effort"] = *reasoningEffort;
-        if (tools && isParameterSupported("tools")) {
-            json toolsArray = json::array();
-            for (const auto& tool : *tools) {
-                std::visit([&toolsArray](const auto& t) { toolsArray.push_back(t.toJson()); },
-                           tool);
-            }
-            j["tools"] = toolsArray;
-        }
-        return j;
-    }
-
-    static ResponsesRequest fromLLMRequest(const LLMRequest& request);
-    static ResponsesRequest fromJson(const json& j);
-};
-
-// Output items in the response
-struct OutputMessage {
-    std::string id;
-    std::string type = "message";
-    std::string role = "assistant";
-    std::vector<json> content;  // Content blocks (text, images, etc.)
-    std::optional<std::string> status;
-
-    static OutputMessage fromJson(const json& j) {
-        OutputMessage msg;
-        msg.id = j.at("id").get<std::string>();
-        msg.role = j.value("role", "assistant");
-        msg.content = j.at("content").get<std::vector<json>>();
-        if (j.contains("status")) msg.status = j["status"].get<std::string>();
-        return msg;
-    }
-};
-
-struct FunctionCall {
-    std::string id;
-    std::string type = "function_call";
-    std::string name;
-    json arguments;
-    std::optional<std::string> status;
-
-    static FunctionCall fromJson(const json& j) {
-        FunctionCall call;
-        call.id = j.at("id").get<std::string>();
-        call.name = j.at("name").get<std::string>();
-        call.arguments = j.at("arguments");
-        if (j.contains("status")) call.status = j["status"].get<std::string>();
-        return call;
-    }
-};
-
-struct WebSearchCall {
-    std::string id;
-    std::string type = "web_search_call";
-    std::string status;
-
-    static WebSearchCall fromJson(const json& j) {
-        WebSearchCall call;
-        call.id = j.at("id").get<std::string>();
-        call.status = j.at("status").get<std::string>();
-        return call;
-    }
-};
-
-struct ImageGenerationCall {
-    std::string id;
-    std::string type = "image_generation_call";
-    std::string status;
-    std::optional<std::string> result;  // Base64 encoded image
-
-    static ImageGenerationCall fromJson(const json& j) {
-        ImageGenerationCall call;
-        call.id = j.at("id").get<std::string>();
-        call.status = j.at("status").get<std::string>();
-        if (j.contains("result")) call.result = j["result"].get<std::string>();
-        return call;
-    }
-};
-
-struct McpApprovalRequest {
-    std::string id;
-    std::string type = "mcp_approval_request";
-    std::string name;
-    json arguments;
-    std::string serverLabel;
-
-    static McpApprovalRequest fromJson(const json& j) {
-        McpApprovalRequest request;
-        request.id = j.at("id").get<std::string>();
-        request.name = j.at("name").get<std::string>();
-        request.arguments = j.at("arguments");
-        request.serverLabel = j.at("server_label").get<std::string>();
-        return request;
-    }
-};
-
-using OutputItem = std::variant<OutputMessage, FunctionCall, WebSearchCall, ImageGenerationCall,
-                                McpApprovalRequest>;
-
-// Complete Responses API response
-struct ResponsesResponse {
-    std::string id;
-    std::string object = "response";
-    double createdAt = 0;
-    ResponseStatus status = ResponseStatus::Completed;
-    std::optional<json> error;
-    std::optional<json> incompleteDetails;
-    std::optional<std::string> instructions;
-    std::optional<int> maxOutputTokens;
-    std::string model;
-    std::vector<OutputItem> output;
-    std::optional<std::string> outputText;  // Convenience field for text output
-    bool parallelToolCalls = false;
-    std::optional<std::string> previousResponseId;
-    std::optional<json> reasoning;
-    bool store = true;
-    std::optional<json> text;
-    std::optional<json> toolChoice;
-    std::vector<json> tools;
-    std::optional<double> topP;
-    std::optional<std::string> truncation;
-    LLMUsage usage;
-    std::optional<std::string> user;
-    std::optional<json> metadata;
-    std::optional<std::string> reasoningEffort;
-
-    static ResponsesResponse fromJson(const json& j);
-    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const;
-
-    // Convenience methods
-    std::string getOutputText() const;
-    std::vector<FunctionCall> getFunctionCalls() const;
-    std::vector<ImageGenerationCall> getImageGenerations() const;
-    bool isCompleted() const { return status == ResponseStatus::Completed; }
-    bool hasError() const { return error.has_value() && !error->is_null(); }
-};
-
-/**
- * OpenAI Chat Completions API Types (Traditional Conversational API)
- */
-
-struct ChatMessage {
-    std::string role;  // "system", "user", "assistant", "tool"
-    std::string content;
-    std::optional<std::string> name;
-    std::optional<json> toolCalls;
-    std::optional<std::string> toolCallId;
-
-    json toJson() const {
-        json j = {{"role", role}, {"content", content}};
-        if (name) j["name"] = *name;
-        if (toolCalls) j["tool_calls"] = *toolCalls;
-        if (toolCallId) j["tool_call_id"] = *toolCallId;
-        return j;
-    }
-
-    static ChatMessage fromJson(const json& j) {
-        ChatMessage msg;
-        msg.role = j.at("role").get<std::string>();
-        msg.content = j.at("content").get<std::string>();
-        if (j.contains("name")) msg.name = j["name"].get<std::string>();
-        if (j.contains("tool_calls")) msg.toolCalls = j["tool_calls"];
-        if (j.contains("tool_call_id")) msg.toolCallId = j["tool_call_id"].get<std::string>();
-        return msg;
-    }
-};
-
-struct ChatCompletionRequest {
-    std::string model;
-    std::vector<ChatMessage> messages;
-    std::optional<double> temperature;
-    std::optional<int> maxTokens;
-    std::optional<double> topP;
-    std::optional<int> n;
-    std::optional<bool> stream;
-    std::optional<std::vector<std::string>> stop;
-    std::optional<double> presencePenalty;
-    std::optional<double> frequencyPenalty;
-    std::optional<json> logitBias;
-    std::optional<std::string> user;
-    std::optional<json> responseFormat;  // For JSON mode
-    std::optional<int> seed;
-    std::optional<std::vector<json>> tools;
-    std::optional<std::string> toolChoice;
-
-    json toJson() const {
-        json j = {{"model", model}, {"messages", json::array()}};
-
-        for (const auto& msg : messages) {
-            j["messages"].push_back(msg.toJson());
-        }
-
-        if (temperature) j["temperature"] = *temperature;
-        if (maxTokens) j["max_tokens"] = *maxTokens;
-        if (topP) j["top_p"] = *topP;
-        if (n) j["n"] = *n;
-        if (stream) j["stream"] = *stream;
-        if (stop) j["stop"] = *stop;
-        if (presencePenalty) j["presence_penalty"] = *presencePenalty;
-        if (frequencyPenalty) j["frequency_penalty"] = *frequencyPenalty;
-        if (logitBias) j["logit_bias"] = *logitBias;
-        if (user) j["user"] = *user;
-        if (responseFormat) j["response_format"] = *responseFormat;
-        if (seed) j["seed"] = *seed;
-        if (tools) j["tools"] = *tools;
-        if (toolChoice) j["tool_choice"] = *toolChoice;
-
-        return j;
-    }
-
-    static ChatCompletionRequest fromLLMRequest(const LLMRequest& request);
-    LLMRequest toLLMRequest() const;
-};
-
-struct ChatCompletionChoice {
-    int index;
-    ChatMessage message;
-    std::optional<std::string> finishReason;
-    std::optional<json> logprobs;
-
-    static ChatCompletionChoice fromJson(const json& j) {
-        ChatCompletionChoice choice;
-        choice.index = j.at("index").get<int>();
-        choice.message = ChatMessage::fromJson(j.at("message"));
-        if (j.contains("finish_reason") && !j["finish_reason"].is_null()) {
-            choice.finishReason = j["finish_reason"].get<std::string>();
-        }
-        if (j.contains("logprobs")) choice.logprobs = j["logprobs"];
-        return choice;
-    }
-};
-
-struct ChatCompletionResponse {
-    std::string id;
-    std::string object;
-    int64_t created;
-    std::string model;
-    std::vector<ChatCompletionChoice> choices;
-    LLMUsage usage;
-    std::optional<std::string> systemFingerprint;
-
-    static ChatCompletionResponse fromJson(const json& j);
-    LLMResponse toLLMResponse(bool expectStructuredOutput = false) const;
-};
-
-/**
- * OpenAI API Configuration
- */
-struct OpenAIConfig {
-    std::string apiKey;
-    std::string baseUrl = "https://api.openai.com/v1";
-    std::string organization;
-    std::string project;
-    std::string defaultModel = "gpt-4o-mini";  // Default model for convenience
-    int timeoutSeconds = 30;
-    int maxRetries = 3;
-    bool enableDeprecationWarnings = true;
-
-    json toJson() const {
-        return json{{"api_key", apiKey},
-                    {"base_url", baseUrl},
-                    {"organization", organization},
-                    {"project", project},
-                    {"timeout_seconds", timeoutSeconds},
-                    {"max_retries", maxRetries},
-                    {"enable_deprecation_warnings", enableDeprecationWarnings}};
-    }
-
-    static OpenAIConfig fromJson(const json& j) {
-        OpenAIConfig config;
-        if (j.contains("api_key")) config.apiKey = j["api_key"].get<std::string>();
-        if (j.contains("base_url")) config.baseUrl = j["base_url"].get<std::string>();
-        if (j.contains("organization")) config.organization = j["organization"].get<std::string>();
-        if (j.contains("project")) config.project = j["project"].get<std::string>();
-        if (j.contains("timeout_seconds")) config.timeoutSeconds = j["timeout_seconds"].get<int>();
-        if (j.contains("max_retries")) config.maxRetries = j["max_retries"].get<int>();
-        if (j.contains("enable_deprecation_warnings")) {
-            config.enableDeprecationWarnings = j["enable_deprecation_warnings"].get<bool>();
-        }
-        return config;
-    }
-};
+// All structs moved to OpenAI namespace
 
 /**
  * API Type Detection and Routing
  */
-enum class ApiType {
-    RESPONSES,         // New structured output API
-    CHAT_COMPLETIONS,  // Traditional conversation API
-    AUTO_DETECT
-};
+// ApiType enum moved to top of namespace
 
 /**
  * Utility functions
  */
-ApiType detectApiType(const LLMRequest& request);
+OpenAI::ApiType detectApiType(const LLMRequest& request);
 bool supportsResponses(const std::string& model);
 bool supportsChatCompletions(const std::string& model);
 
@@ -1037,415 +890,24 @@ const std::vector<std::string> CHAT_COMPLETION_MODELS = {"gpt-4", "gpt-4-turbo",
  * These will be implemented in the source files
  */
 
-// ResponsesRequest conversion methods
-inline ResponsesRequest ResponsesRequest::fromLLMRequest(const LLMRequest& request) {
-    ResponsesRequest responsesReq;
-    responsesReq.model = request.config.model;
+// Conversion methods - implementations moved to .cpp file to avoid circular dependency
 
-    // Map prompt to OpenAI instructions field
-    if (!request.prompt.empty()) {
-        responsesReq.instructions = request.prompt;
-    }
+// Note: fromJson implementations are in the .cpp file to avoid circular dependencies
 
-    // Map context to OpenAI inputValues
-    if (!request.context.empty()) {
-        // Convert context (vector of json) to InputMessages
-        std::vector<InputMessage> messages;
+// ResponsesResponse conversion methods - implementation in .cpp file
 
-        for (const auto& contextItem : request.context) {
-            // Case 1: Single JSON object with role/content
-            if (contextItem.is_object() && contextItem.contains("role") &&
-                contextItem.contains("content")) {
-                InputMessage msg;
-                msg.role = InputMessage::stringToRole(contextItem["role"].get<std::string>());
-                msg.content = contextItem["content"].get<std::string>();
-                messages.push_back(msg);
-                continue;
-            }
+// Implementation moved to .cpp file
 
-            // Case 2: Array of message-like objects [{role, content}, ...]
-            if (contextItem.is_array()) {
-                for (const auto& item : contextItem) {
-                    if (item.is_object() && item.contains("role") && item.contains("content")) {
-                        InputMessage msg;
-                        msg.role = InputMessage::stringToRole(item["role"].get<std::string>());
-                        msg.content = item["content"].get<std::string>();
-                        messages.push_back(msg);
-                    }
-                }
-                continue;
-            }
+// Convenience methods for ResponsesResponse - implementation in .cpp file
 
-            // Fallback: stringify unknown item as a user message
-            InputMessage msg;
-            msg.role = InputMessage::Role::User;
-            msg.content = contextItem.dump();
-            messages.push_back(msg);
-        }
+// ChatCompletionRequest conversion methods - implementation in .cpp file
 
-        responsesReq.input = ResponsesInput::fromContentList(messages);
-    } else if (!request.prompt.empty()) {
-        // If context is empty but prompt is present, use prompt as input
-        responsesReq.input = ResponsesInput::fromText(request.prompt);
-    } else {
-        // If both context and prompt are empty, do not set input at all
-        responsesReq.input = std::nullopt;
-    }
-    responsesReq.toolChoice =
-        ToolChoiceMode::Auto;  // Explicitly initialize to fix cppcheck warning
-    if (request.config.maxTokens.has_value() && *request.config.maxTokens > 0) {
-        responsesReq.maxOutputTokens = *request.config.maxTokens;
-    }
-    // Only set temperature if it's provided and valid
-    if (request.config.temperature.has_value() && *request.config.temperature >= 0.0f) {
-        responsesReq.temperature = static_cast<double>(*request.config.temperature);
-    }
-    if (!request.previousResponseId.empty()) {
-        responsesReq.previousResponseID = request.previousResponseId;
-    }
-
-    // Handle JSON schema for structured outputs
-    if (request.config.schemaObject.has_value()) {
-        // Use the structured schema object directly
-        const json& schemaJson = request.config.schemaObject.value();
-        // Use the function name as schema name (like aideas-core does)
-        std::string schemaName = request.config.functionName;
-        if (schemaName.empty()) {
-            schemaName = "response_schema";
-        }
-        responsesReq.text = TextOutputConfig(schemaName, schemaJson, true);
-    } else if (!request.config.jsonSchema.empty()) {
-        // Fallback to string schema for backward compatibility
-        try {
-            json schemaJson = json::parse(request.config.jsonSchema);
-            // Use the function name as schema name (like aideas-core does)
-            std::string schemaName = request.config.functionName;
-            if (schemaName.empty()) {
-                schemaName = "response_schema";
-            }
-            responsesReq.text = TextOutputConfig(schemaName, schemaJson, true);
-        } catch (const std::exception& e) {
-            throw std::runtime_error("Invalid JSON schema: " + std::string(e.what()));
-        }
-    }
-
-    return responsesReq;
-}
-
-inline ResponsesRequest ResponsesRequest::fromJson(const json& j) {
-    ResponsesRequest req;
-    req.model = j.value("model", "gpt-4o");
-    req.input = ResponsesInput::fromJson(j.at("input"));
-
-    if (j.contains("include")) req.include = j["include"].get<std::vector<std::string>>();
-    if (j.contains("instructions")) req.instructions = j["instructions"].get<std::string>();
-    if (j.contains("max_output_tokens")) req.maxOutputTokens = j["max_output_tokens"].get<int>();
-    if (j.contains("max_tool_calls")) req.maxToolCalls = j["max_tool_calls"].get<int>();
-    if (j.contains("metadata"))
-        req.metadata = j["metadata"].get<std::unordered_map<std::string, std::string>>();
-    if (j.contains("parallel_tool_calls"))
-        req.parallelToolCalls = j["parallel_tool_calls"].get<bool>();
-    if (j.contains("previous_response_id"))
-        req.previousResponseID = j["previous_response_id"].get<std::string>();
-    if (j.contains("prompt")) req.prompt = j["prompt"].get<std::string>();
-    if (j.contains("reasoning")) req.reasoning = j["reasoning"];
-    if (j.contains("service_tier")) req.serviceTier = j["service_tier"].get<std::string>();
-    if (j.contains("store")) req.store = j["store"].get<bool>();
-    if (j.contains("stream")) req.stream = j["stream"].get<bool>();
-    if (j.contains("background")) req.background = j["background"].get<bool>();
-    if (j.contains("temperature")) req.temperature = j["temperature"].get<double>();
-    if (j.contains("text")) req.text = TextOutputConfig::fromJson(j["text"]);
-    if (j.contains("tool_choice"))
-        req.toolChoice = toolChoiceModeFromString(j["tool_choice"].get<std::string>());
-    if (j.contains("top_logprobs")) req.topLogprobs = j["top_logprobs"].get<int>();
-    if (j.contains("top_p")) req.topP = j["top_p"].get<double>();
-    if (j.contains("truncation")) req.truncation = j["truncation"].get<std::string>();
-    if (j.contains("user")) req.user = j["user"].get<std::string>();
-    if (j.contains("reasoning_effort"))
-        req.reasoningEffort = j["reasoning_effort"].get<std::string>();
-
-    // Parse tools array if present
-    if (j.contains("tools") && j["tools"].is_array()) {
-        std::vector<ToolVariant> tools;
-        for (const auto& toolJson : j["tools"]) {
-            std::string toolType = toolJson.at("type").get<std::string>();
-            if (toolType == "function") {
-                tools.push_back(FunctionTool::fromJson(toolJson));
-            } else if (toolType == "web_search") {
-                tools.push_back(WebSearchTool::fromJson(toolJson));
-            } else if (toolType == "file_search") {
-                tools.push_back(FileSearchTool::fromJson(toolJson));
-            } else if (toolType == "code_interpreter") {
-                tools.push_back(CodeInterpreterTool::fromJson(toolJson));
-            } else if (toolType == "image_generation") {
-                tools.push_back(ImageGenerationTool::fromJson(toolJson));
-            } else if (toolType == "mcp") {
-                tools.push_back(McpTool::fromJson(toolJson));
-            }
-        }
-        req.tools = tools;
-    }
-
-    return req;
-}
-
-// ResponsesResponse conversion methods
-inline ResponsesResponse ResponsesResponse::fromJson(const json& j) {
-    ResponsesResponse resp;
-    resp.id = safeGetRequiredJson<std::string>(j, "id");
-    resp.object = safeGetJson(j, "object", std::string("response"));
-    resp.createdAt = safeGetJson(j, "created_at", 0.0);
-    resp.status = responseStatusFromString(safeGetJson(j, "status", std::string("completed")));
-    resp.model = safeGetRequiredJson<std::string>(j, "model");
-
-    // Use utility functions for optional fields
-    resp.error = safeGetOptionalJson<json>(j, "error");
-    resp.incompleteDetails = safeGetOptionalJson<json>(j, "incomplete_details");
-    resp.instructions = safeGetOptionalJson<std::string>(j, "instructions");
-    if (j.contains("max_output_tokens"))
-        resp.maxOutputTokens = safeGetJson(j, "max_output_tokens", 0);
-    resp.outputText = safeGetOptionalJson<std::string>(j, "output_text");
-    resp.parallelToolCalls = safeGetJson(j, "parallel_tool_calls", false);
-    resp.previousResponseId = safeGetOptionalJson<std::string>(j, "previous_response_id");
-    resp.reasoning = safeGetOptionalJson<json>(j, "reasoning");
-    resp.store = safeGetJson(j, "store", true);
-    resp.text = safeGetOptionalJson<json>(j, "text");
-    resp.toolChoice = safeGetOptionalJson<json>(j, "tool_choice");
-    resp.tools = safeGetJson(j, "tools", std::vector<json>());
-    if (j.contains("top_p")) resp.topP = safeGetJson(j, "top_p", 0.0);
-    resp.truncation = safeGetOptionalJson<std::string>(j, "truncation");
-    resp.user = safeGetOptionalJson<std::string>(j, "user");
-    resp.metadata = safeGetOptionalJson<json>(j, "metadata");
-    resp.reasoningEffort = safeGetOptionalJson<std::string>(j, "reasoning_effort");
-
-    // Parse usage
-    if (j.contains("usage")) {
-        const auto& usage = j["usage"];
-        resp.usage.inputTokens = safeGetJson(usage, "input_tokens", 0);
-        resp.usage.outputTokens = safeGetJson(usage, "output_tokens", 0);
-    }
-
-    // Parse output array
-    if (j.contains("output") && j["output"].is_array()) {
-        for (const auto& outputJson : j["output"]) {
-            std::string outputType = outputJson.at("type").get<std::string>();
-            if (outputType == "message") {
-                resp.output.push_back(OutputMessage::fromJson(outputJson));
-            } else if (outputType == "function_call") {
-                resp.output.push_back(FunctionCall::fromJson(outputJson));
-            } else if (outputType == "web_search_call") {
-                resp.output.push_back(WebSearchCall::fromJson(outputJson));
-            } else if (outputType == "image_generation_call") {
-                resp.output.push_back(ImageGenerationCall::fromJson(outputJson));
-            } else if (outputType == "mcp_approval_request") {
-                resp.output.push_back(McpApprovalRequest::fromJson(outputJson));
-            }
-        }
-    }
-
-    return resp;
-}
-
-inline LLMResponse ResponsesResponse::toLLMResponse(bool expectStructuredOutput) const {
-    LLMResponse llmResp;
-    llmResp.success = (status == ResponseStatus::Completed);
-    llmResp.responseId = id;
-    llmResp.usage = usage;
-
-    if (hasError()) {
-        llmResp.errorMessage = error->dump();
-    } else {
-        // Extract text output from the response
-        std::string textOutput = getOutputText();
-        if (!textOutput.empty()) {
-            if (expectStructuredOutput) {
-                // Parse as JSON for structured output
-                llmResp.result = json::parse(textOutput);
-            } else {
-                // Wrap free-form text in text field
-                llmResp.result = json{{"text", textOutput}};
-            }
-        } else {
-            llmResp.result = json::object();
-        }
-
-        // Add function calls if any
-        auto functionCalls = getFunctionCalls();
-        if (!functionCalls.empty()) {
-            json calls = json::array();
-            std::transform(functionCalls.begin(), functionCalls.end(), std::back_inserter(calls),
-                           [](const FunctionCall& call) {
-                               return json{{"id", call.id},
-                                           {"name", call.name},
-                                           {"arguments", call.arguments}};
-                           });
-            llmResp.result["function_calls"] = calls;
-        }
-
-        // Add images if any
-        auto images = getImageGenerations();
-        if (!images.empty()) {
-            json imageArray = json::array();
-            for (const auto& img : images) {
-                if (img.result) {
-                    imageArray.push_back(*img.result);
-                }
-            }
-            llmResp.result["images"] = imageArray;
-        }
-    }
-
-    return llmResp;
-}
-
-// Convenience methods for ResponsesResponse
-inline std::string ResponsesResponse::getOutputText() const {
-    if (outputText) return *outputText;
-
-    // Extract from output messages
-    for (const auto& item : output) {
-        if (std::holds_alternative<OutputMessage>(item)) {
-            const auto& msg = std::get<OutputMessage>(item);
-            auto it = std::find_if(msg.content.begin(), msg.content.end(), [](const json& content) {
-                return content.contains("text") && content["type"] == "output_text";
-            });
-            if (it != msg.content.end()) {
-                return (*it)["text"].get<std::string>();
-            }
-        }
-    }
-    return "";
-}
-
-inline std::vector<FunctionCall> ResponsesResponse::getFunctionCalls() const {
-    std::vector<FunctionCall> calls;
-    for (const auto& item : output) {
-        if (std::holds_alternative<FunctionCall>(item)) {
-            calls.push_back(std::get<FunctionCall>(item));
-        }
-    }
-    return calls;
-}
-
-inline std::vector<ImageGenerationCall> ResponsesResponse::getImageGenerations() const {
-    std::vector<ImageGenerationCall> images;
-    for (const auto& item : output) {
-        if (std::holds_alternative<ImageGenerationCall>(item)) {
-            images.push_back(std::get<ImageGenerationCall>(item));
-        }
-    }
-    return images;
-}
-
-// ChatCompletionRequest conversion methods
-inline ChatCompletionRequest ChatCompletionRequest::fromLLMRequest(const LLMRequest& request) {
-    ChatCompletionRequest chatReq;
-    chatReq.model = request.config.model;
-
-    // Convert prompt to messages
-    if (!request.prompt.empty()) {
-        ChatMessage userMsg;
-        userMsg.role = "user";
-        userMsg.content = request.prompt;
-        chatReq.messages.push_back(userMsg);
-    }
-
-    if (request.config.maxTokens.has_value() && *request.config.maxTokens > 0) {
-        chatReq.maxTokens = *request.config.maxTokens;
-    }
-    // Only set temperature if it's provided and valid
-    if (request.config.temperature.has_value() && *request.config.temperature >= 0.0f) {
-        chatReq.temperature = static_cast<double>(*request.config.temperature);
-    }
-
-    return chatReq;
-}
-
-inline LLMRequest ChatCompletionRequest::toLLMRequest() const {
-    LLMRequestConfig config;
-    config.client = "openai";
-    config.model = model;
-    if (temperature) config.temperature = static_cast<float>(*temperature);
-    if (maxTokens) config.maxTokens = *maxTokens;
-
-    std::string prompt;
-    if (!messages.empty()) {
-        // Use the last user message as prompt
-        for (auto it = messages.rbegin(); it != messages.rend(); ++it) {
-            if (it->role == "user") {
-                prompt = it->content;
-                break;
-            }
-        }
-    }
-
-    return LLMRequest(config, prompt);
-}
-
-// ChatCompletionResponse conversion methods
-inline ChatCompletionResponse ChatCompletionResponse::fromJson(const json& j) {
-    ChatCompletionResponse resp;
-    resp.id = j.at("id").get<std::string>();
-    resp.object = j.at("object").get<std::string>();
-    resp.created = j.at("created").get<int64_t>();
-    resp.model = j.at("model").get<std::string>();
-
-    if (j.contains("system_fingerprint")) {
-        resp.systemFingerprint = j["system_fingerprint"].get<std::string>();
-    }
-
-    // Parse choices
-    for (const auto& choiceJson : j.at("choices")) {
-        resp.choices.push_back(ChatCompletionChoice::fromJson(choiceJson));
-    }
-
-    // Parse usage
-    if (j.contains("usage")) {
-        const auto& usage = j["usage"];
-        if (usage.contains("prompt_tokens"))
-            resp.usage.inputTokens = usage["prompt_tokens"].get<int>();
-        if (usage.contains("completion_tokens"))
-            resp.usage.outputTokens = usage["completion_tokens"].get<int>();
-    }
-
-    return resp;
-}
-
-inline LLMResponse ChatCompletionResponse::toLLMResponse(bool expectStructuredOutput) const {
-    LLMResponse llmResp;
-    llmResp.success = !choices.empty();
-    llmResp.responseId = id;
-    llmResp.usage = usage;
-
-    if (!choices.empty()) {
-        llmResp.result = json::object();
-        llmResp.result["text"] = choices[0].message.content;
-        if (choices[0].message.toolCalls) {
-            llmResp.result["tool_calls"] = *choices[0].message.toolCalls;
-        }
-    } else {
-        llmResp.errorMessage = "No choices returned";
-    }
-
-    return llmResp;
-}
+// ChatCompletionResponse conversion methods - implementation in .cpp file
 
 /**
  * Utility functions implementation
  */
-inline ApiType detectApiType(const LLMRequest& request) {
-    const std::string& model = request.config.model;
-
-    // Check if it's a Responses API model
-    if (std::any_of(
-            RESPONSES_MODELS.begin(), RESPONSES_MODELS.end(),
-            [&model](const std::string& responsesModel) { return model == responsesModel; })) {
-        return ApiType::RESPONSES;
-    }
-
-    // Default to Chat Completions for most models
-    return ApiType::CHAT_COMPLETIONS;
-}
+// Implementation moved to .cpp file to avoid circular dependency
 
 inline bool supportsResponses(const std::string& model) {
     return std::any_of(
@@ -1466,5 +928,3 @@ inline std::string getRecommendedApiForModel(const std::string& model) {
     }
     return "Unknown";
 }
-
-}  // namespace OpenAI

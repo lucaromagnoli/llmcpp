@@ -5,9 +5,11 @@
 #include <stdexcept>
 
 #include "openai/OpenAIHttpClient.h"
+#include "core/LLMTypes.h"  // Include for complete type definitions
 
 OpenAIResponsesApi::OpenAIResponsesApi(std::shared_ptr<OpenAIHttpClient> httpClient)
     : httpClient_(std::move(httpClient)) {}
+
 
 // Core Responses API methods
 OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequest& request) {
@@ -36,8 +38,8 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
 
         // Extra debug for GPT-5 incomplete
         try {
-            auto model = OpenAI::safeGetRequiredJson<std::string>(responseJson, "model");
-            auto status = OpenAI::safeGetJson(responseJson, "status", std::string(""));
+            auto model = safeGetRequiredJson<std::string>(responseJson, "model");
+            auto status = safeGetJson(responseJson, "status", std::string(""));
             if (model == "gpt-5" && status != "completed") {
                 std::cerr << "⚠️ GPT-5 non-completed status: " << status << std::endl;
                 if (responseJson.contains("incomplete_details")) {
@@ -48,7 +50,7 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::create(const OpenAI::ResponsesRequ
         } catch (...) {}
 
         // Check for API errors using safe JSON function
-        auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");
+        auto error = safeGetOptionalJson<json>(responseJson, "error");
         if (error.has_value()) {
             handleApiError(responseJson);
         }
@@ -114,7 +116,7 @@ OpenAI::ResponsesResponse OpenAIResponsesApi::retrieve(const std::string& respon
         json responseJson = json::parse(httpResponse.body);
 
         // Check for API errors using safe JSON function
-        auto error = OpenAI::safeGetOptionalJson<json>(responseJson, "error");
+        auto error = safeGetOptionalJson<json>(responseJson, "error");
         if (error.has_value()) {
             handleApiError(responseJson);
         }
@@ -242,8 +244,8 @@ bool OpenAIResponsesApi::validateRequest(const OpenAI::ResponsesRequest& request
     }
 
     // Validate tools if present
-    if (request.tools) {
-        for (const auto& tool : *request.tools) {
+    if (!request.tools.empty()) {
+        for (const auto& tool : request.tools) {
             try {
                 std::visit([](const auto& t) { t.toJson(); }, tool);
             } catch (const std::exception& e) {
@@ -257,7 +259,7 @@ bool OpenAIResponsesApi::validateRequest(const OpenAI::ResponsesRequest& request
 }
 
 std::vector<std::string> OpenAIResponsesApi::getSupportedModels() const {
-    return OpenAI::RESPONSES_MODELS;
+    return RESPONSES_MODELS;
 }
 
 bool OpenAIResponsesApi::supportsBackgroundProcessing(const std::string& model) const {
@@ -324,26 +326,26 @@ void OpenAIResponsesApi::processStreamEvent(
 }
 
 OpenAI::ResponsesResponse OpenAIResponsesApi::processResponse(const json& responseJson) {
-    return OpenAI::ResponsesResponse::fromJson(responseJson);
+    return ResponsesResponse::fromJson(responseJson);
 }
 
 void OpenAIResponsesApi::handleApiError(const json& errorResponse) const {
-    auto errorObj = OpenAI::safeGetOptionalJson<json>(errorResponse, "error");
+    auto errorObj = safeGetOptionalJson<json>(errorResponse, "error");
     if (errorObj.has_value()) {
         const auto& error = errorObj.value();
         std::string errorMsg = "OpenAI API Error";
 
-        auto message = OpenAI::safeGetOptionalJson<std::string>(error, "message");
+        auto message = safeGetOptionalJson<std::string>(error, "message");
         if (message.has_value()) {
             errorMsg += ": " + message.value();
         }
 
-        auto type = OpenAI::safeGetOptionalJson<std::string>(error, "type");
+        auto type = safeGetOptionalJson<std::string>(error, "type");
         if (type.has_value()) {
             errorMsg += " (Type: " + type.value() + ")";
         }
 
-        auto code = OpenAI::safeGetOptionalJson<std::string>(error, "code");
+        auto code = safeGetOptionalJson<std::string>(error, "code");
         if (code.has_value()) {
             errorMsg += " (Code: " + code.value() + ")";
         }
