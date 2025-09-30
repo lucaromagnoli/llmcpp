@@ -30,8 +30,20 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Find dependencies
-find_package(OpenSSL REQUIRED)
+# Optional OpenSSL dependency (prefer native SSL if available)
+option(LLMCPP_USE_OPENSSL "Use OpenSSL instead of native SSL" OFF)
+
+if(LLMCPP_USE_OPENSSL)
+    find_package(OpenSSL QUIET)
+    if(OpenSSL_FOUND)
+        message(STATUS "llmcpp: Using OpenSSL for HTTPS")
+    else()
+        message(WARNING "llmcpp: OpenSSL requested but not found, falling back to native SSL")
+        set(LLMCPP_USE_OPENSSL OFF)
+    endif()
+else()
+    message(STATUS "llmcpp: Using native SSL (SecureTransport on macOS, WinSSL on Windows)")
+endif()
 
 # Use FetchContent for dependencies
 include(FetchContent)
@@ -50,10 +62,24 @@ FetchContent_Declare(
     GIT_TAG v0.15.3
 )
 
-# Configure httplib to use OpenSSL and disable unnecessary features
-set(HTTPLIB_USE_OPENSSL ON)
-set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "" FORCE)
-set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "" FORCE)
+# Configure httplib SSL and disable unnecessary features
+set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "Use zlib" FORCE)
+set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "Use Brotli" FORCE)
+
+if(LLMCPP_USE_OPENSSL AND OpenSSL_FOUND)
+    # Use OpenSSL
+    set(HTTPLIB_USE_OPENSSL ON CACHE BOOL "Use OpenSSL" FORCE)
+    set(HTTPLIB_USE_SECURE_TRANSPORT OFF CACHE BOOL "Use SecureTransport" FORCE)
+    set(HTTPLIB_USE_WINSSL OFF CACHE BOOL "Use WinSSL" FORCE)
+else()
+    # Use native SSL
+    set(HTTPLIB_USE_OPENSSL OFF CACHE BOOL "Use OpenSSL" FORCE)
+    if(APPLE)
+        set(HTTPLIB_USE_SECURE_TRANSPORT ON CACHE BOOL "Use SecureTransport on macOS" FORCE)
+    elseif(WIN32)
+        set(HTTPLIB_USE_WINSSL ON CACHE BOOL "Use WinSSL on Windows" FORCE)
+    endif()
+endif()
 
 # Make dependencies available
 FetchContent_MakeAvailable(nlohmann_json httplib)
@@ -97,8 +123,6 @@ target_link_libraries(llmcpp
         nlohmann_json
     PRIVATE
         httplib::httplib
-        OpenSSL::SSL 
-        OpenSSL::Crypto
 )
 
 # Platform-specific libraries
