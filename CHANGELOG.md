@@ -4,6 +4,23 @@
 
 
 
+## [1.5.0] - 2025-09-30
+
+### Added
+- CMake option `LLMCPP_USE_OPENSSL` to optionally use OpenSSL for HTTPS (defaults to OFF)
+- Native SSL support via platform-specific implementations:
+  - macOS: SecureTransport (via Security framework)
+  - Windows: WinSSL/Schannel (via crypt32)
+  - Linux: Can enable OpenSSL with `-DLLMCPP_USE_OPENSSL=ON`
+
+### Changed
+- Default SSL/TLS implementation changed from OpenSSL to native platform SSL
+- OpenSSL is now an optional dependency instead of required
+- Faster builds and smaller binaries due to removed OpenSSL dependency
+
+### Fixed
+- Simplified dependency management by using native SSL implementations
+
 ## [1.4.0] - 2025-09-30
 
 ### Added
