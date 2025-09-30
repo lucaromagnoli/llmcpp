@@ -21,6 +21,7 @@ A modern C++20 library providing a unified interface for Large Language Model AP
 - **📝 Flexible input**: Support for both simple prompts and structured context
 - **🎯 Type-safe models**: Strongly typed Model enum for compile-time safety
 - **📊 Performance benchmarks**: Comprehensive model comparison and cost analysis
+- **🔌 MCP Integration**: Model Context Protocol support for external tool integration
 
 ## Quick Start
 
@@ -366,6 +367,7 @@ target_link_libraries(my_target PRIVATE llmcpp)
 - **`LLMRequest`/`LLMResponse`**: Unified request/response types with flexible input mapping
 - **`ClientManager`**: Smart pointer-based client management
 - **`LLMRequestConfig`**: Configuration for models and parameters
+- **`OpenAIMcpUtils`**: Model Context Protocol utilities for external tool integration
 
 ### Request Structure
 
@@ -390,6 +392,7 @@ This design allows for:
   - Function calling and tool usage
   - Error handling and usage tracking
   - Flexible input mapping (prompt → instructions, context → input)
+  - Model Context Protocol (MCP) integration
 
 ## Building
 
@@ -644,6 +647,45 @@ auto optionalString = JsonSchemaBuilder::optionalString();
 auto stringArray = JsonSchemaBuilder::arrayOf(JsonSchemaBuilder::string());
 auto statusEnum = JsonSchemaBuilder::stringEnum({"active", "inactive", "pending"});
 ```
+
+### Model Context Protocol (MCP) Integration
+
+llmcpp includes utilities for integrating external tools via the Model Context Protocol:
+
+```cpp
+#include <openai/OpenAIMcpUtils.h>
+
+// Convert MCP tools to OpenAI tool definitions
+std::vector<json> mcpTools = getMcpToolsFromServer();
+std::vector<OpenAI::ToolDefinition> openaiTools = OpenAI::convertMcpToolsToOpenAI(mcpTools);
+
+// Add MCP tools to your request
+LLMRequestConfig config;
+config.model = "gpt-4o-mini";
+config.tools = openaiTools;
+
+LLMRequest request(config, "Your prompt here");
+auto response = client.sendRequest(request);
+
+// Handle tool calls
+if (response.hasToolCalls()) {
+    for (const auto& toolCall : response.getToolCalls()) {
+        // Execute MCP tool and get result
+        json toolResult = executeMcpTool(toolCall.name, toolCall.arguments);
+
+        // Send result back to continue conversation
+        // ...
+    }
+}
+```
+
+**MCP Features:**
+- **Tool Discovery**: Automatically convert MCP tool definitions to OpenAI format
+- **Type Mapping**: Seamless conversion between MCP and OpenAI schemas
+- **Tool Execution**: Easy integration with MCP servers
+- **Error Handling**: Robust error handling for MCP operations
+
+For more details on MCP integration, see the [MCP integration tests](tests/integration/test_mcp_integration.cpp).
 
 ## Testing
 
