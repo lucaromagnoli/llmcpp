@@ -30,6 +30,21 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Optional OpenSSL dependency (prefer native SSL if available)
+option(LLMCPP_USE_OPENSSL "Use OpenSSL instead of native SSL" OFF)
+
+if(LLMCPP_USE_OPENSSL)
+    find_package(OpenSSL QUIET)
+    if(OpenSSL_FOUND)
+        message(STATUS "llmcpp: Using OpenSSL for HTTPS")
+    else()
+        message(WARNING "llmcpp: OpenSSL requested but not found, falling back to native SSL")
+        set(LLMCPP_USE_OPENSSL OFF)
+    endif()
+else()
+    message(STATUS "llmcpp: Using native SSL (SecureTransport on macOS, WinSSL on Windows)")
+endif()
+
 # Use FetchContent for dependencies
 include(FetchContent)
 
@@ -47,19 +62,23 @@ FetchContent_Declare(
     GIT_TAG v0.15.3
 )
 
-# Configure httplib to use native SSL and disable unnecessary features
-# - macOS: Uses SecureTransport (via Security framework)
-# - Windows: Uses WinSSL/Schannel (via crypt32)
-# - Linux: Would need OpenSSL, but we primarily target macOS/Windows
-set(HTTPLIB_USE_OPENSSL OFF CACHE BOOL "Use OpenSSL" FORCE)
+# Configure httplib SSL and disable unnecessary features
 set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "Use zlib" FORCE)
 set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "Use Brotli" FORCE)
 
-# Enable platform-specific SSL
-if(APPLE)
-    set(HTTPLIB_USE_SECURE_TRANSPORT ON CACHE BOOL "Use SecureTransport on macOS" FORCE)
-elseif(WIN32)
-    set(HTTPLIB_USE_WINSSL ON CACHE BOOL "Use WinSSL on Windows" FORCE)
+if(LLMCPP_USE_OPENSSL AND OpenSSL_FOUND)
+    # Use OpenSSL
+    set(HTTPLIB_USE_OPENSSL ON CACHE BOOL "Use OpenSSL" FORCE)
+    set(HTTPLIB_USE_SECURE_TRANSPORT OFF CACHE BOOL "Use SecureTransport" FORCE)
+    set(HTTPLIB_USE_WINSSL OFF CACHE BOOL "Use WinSSL" FORCE)
+else()
+    # Use native SSL
+    set(HTTPLIB_USE_OPENSSL OFF CACHE BOOL "Use OpenSSL" FORCE)
+    if(APPLE)
+        set(HTTPLIB_USE_SECURE_TRANSPORT ON CACHE BOOL "Use SecureTransport on macOS" FORCE)
+    elseif(WIN32)
+        set(HTTPLIB_USE_WINSSL ON CACHE BOOL "Use WinSSL on Windows" FORCE)
+    endif()
 endif()
 
 # Make dependencies available
