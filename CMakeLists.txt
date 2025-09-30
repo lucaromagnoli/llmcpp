@@ -30,9 +30,6 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Find dependencies
-find_package(OpenSSL REQUIRED)
-
 # Use FetchContent for dependencies
 include(FetchContent)
 
@@ -50,10 +47,20 @@ FetchContent_Declare(
     GIT_TAG v0.15.3
 )
 
-# Configure httplib to use OpenSSL and disable unnecessary features
-set(HTTPLIB_USE_OPENSSL ON)
-set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "" FORCE)
-set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "" FORCE)
+# Configure httplib to use native SSL and disable unnecessary features
+# - macOS: Uses SecureTransport (via Security framework)
+# - Windows: Uses WinSSL/Schannel (via crypt32)
+# - Linux: Would need OpenSSL, but we primarily target macOS/Windows
+set(HTTPLIB_USE_OPENSSL OFF CACHE BOOL "Use OpenSSL" FORCE)
+set(HTTPLIB_USE_ZLIB OFF CACHE BOOL "Use zlib" FORCE)
+set(HTTPLIB_USE_BROTLI OFF CACHE BOOL "Use Brotli" FORCE)
+
+# Enable platform-specific SSL
+if(APPLE)
+    set(HTTPLIB_USE_SECURE_TRANSPORT ON CACHE BOOL "Use SecureTransport on macOS" FORCE)
+elseif(WIN32)
+    set(HTTPLIB_USE_WINSSL ON CACHE BOOL "Use WinSSL on Windows" FORCE)
+endif()
 
 # Make dependencies available
 FetchContent_MakeAvailable(nlohmann_json httplib)
@@ -97,8 +104,6 @@ target_link_libraries(llmcpp
         nlohmann_json
     PRIVATE
         httplib::httplib
-        OpenSSL::SSL 
-        OpenSSL::Crypto
 )
 
 # Platform-specific libraries
