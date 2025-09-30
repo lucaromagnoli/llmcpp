@@ -4,6 +4,32 @@
 
 
 
+## [1.4.0] - 2025-09-30
+
+### Added
+- MCP (Model Context Protocol) tools integration with OpenAI Responses API
+- `OpenAI::McpTool` struct for configuring MCP servers
+- `OpenAIMcpUtils` namespace with helper functions:
+  - `extractMcpCalls()` - Extract all MCP tool calls from response
+  - `wasToolCalled()` - Check if specific tool was called
+  - `getToolOutput()` - Get output from specific tool
+  - `getAllToolOutputs()` - Get all tool outputs
+  - `wereMcpToolsListed()` - Check if tools were listed
+  - `getAvailableMcpTools()` - Get list of available tools
+  - `wereAllToolsCalled()` - Check if all expected tools were called
+  - `getMcpUsageStats()` - Get usage statistics
+- Helper functions: `setTools()`, `hasTools()`, `getToolsJson()`
+- Integration tests for MCP functionality using public DeepWiki MCP server
+- Generic `extensions` field in `LLMRequestConfig` for provider-specific data
+- `JsonUtils.h` with safe JSON parsing utilities
+
+### Changed
+- Refactored core LLM types to be provider-agnostic
+- Updated to support gpt-5-mini model
+
+### Other
+- Merge pull request #60 from lucaromagnoli/feature/mcp-tools-integration
+
 ## [1.3.0] - 2025-08-11
 
 ### Other
