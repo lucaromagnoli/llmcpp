@@ -32,6 +32,7 @@ set(INTEGRATION_TEST_SOURCES
     integration/test_simple_integration.cpp
     integration/test_openai_integration.cpp  # Re-enabling to check errors
     integration/test_anthropic_integration.cpp
+    integration/test_mcp_integration.cpp
 )
 
 # Create test executable with all tests

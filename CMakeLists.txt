@@ -73,6 +73,7 @@ set(LLMCPP_SOURCES
     src/openai/OpenAISchemaBuilder.cpp
     src/openai/OpenAIModels.cpp
     src/openai/OpenAITypes.cpp
+    src/openai/OpenAIMcpUtils.cpp
     src/openai/OpenAIUtils.cpp
     src/anthropic/AnthropicClient.cpp
     src/anthropic/AnthropicHttpClient.cpp
