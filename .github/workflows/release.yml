@@ -29,7 +29,7 @@ jobs:
             COMMIT_MSG=$(git log -1 --pretty=%s)
             echo "Commit message: $COMMIT_MSG"
 
-            if [[ $COMMIT_MSG =~ Merge.*release/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            if [[ $COMMIT_MSG =~ Merge.*[Rr]elease/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
               echo "✅ Release merge detected"
               echo "skip_release=false" >> $GITHUB_OUTPUT
             else
@@ -80,7 +80,7 @@ jobs:
             COMMIT_MSG=$(git log -1 --pretty=%s)
             echo "Commit message: $COMMIT_MSG"
 
-            if [[ $COMMIT_MSG =~ Merge.*release/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+            if [[ $COMMIT_MSG =~ Merge.*[Rr]elease/v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
               VERSION="${BASH_REMATCH[1]}"
               echo "Extracted version from merge commit: $VERSION"
             else
