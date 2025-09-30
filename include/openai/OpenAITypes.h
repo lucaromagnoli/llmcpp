@@ -5,32 +5,11 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
+#include "core/LLMTypes.h"
 #include "utils/JsonUtils.h"
 
-// Forward declarations to avoid circular dependency
-// LLMRequest and LLMResponse are now fully defined in this file
-
 using json = nlohmann::json;
-
-// Context type using standard C++ vectors of generic objects
-using LLMContext = std::vector<json>;
-
-// ToolVariant will be defined after all tool structs
-
-// Define LLMUsage here to avoid circular dependency
-struct LLMUsage {
-    int inputTokens = 0;
-    int outputTokens = 0;
-
-    int totalTokens() const { return inputTokens + outputTokens; }
-
-    std::string toString() const {
-        return "LLMUsage { inputTokens: " + std::to_string(inputTokens) +
-               ", outputTokens: " + std::to_string(outputTokens) +
-               ", totalTokens: " + std::to_string(totalTokens()) + " }";
-    }
-};
-
 
 namespace OpenAI {
 
@@ -111,13 +90,12 @@ class TextOutputConfig {
         }
 
         bool strict = true;
-        if (format.contains("json_schema") && format["json_schema"].contains("additionalProperties")) {
+        if (format.contains("json_schema") &&
+            format["json_schema"].contains("additionalProperties")) {
             strict = !format["json_schema"]["additionalProperties"].get<bool>();
         }
 
-        return TextOutputConfig{format["name"].get<std::string>(),
-                               format["json_schema"],
-                               strict};
+        return TextOutputConfig{format["name"].get<std::string>(), format["json_schema"], strict};
     }
 
    private:
@@ -126,97 +104,15 @@ class TextOutputConfig {
     bool isStrict = true;
 };
 
-// Forward declaration - ToolVariant will be defined after tool structs
+// OpenAI-specific tool variant
 using ToolVariant = std::variant<FunctionTool, WebSearchTool, FileSearchTool, CodeInterpreterTool,
                                  ImageGenerationTool, McpTool>;
 
-/// Represents the configuration for the LLM
-struct LLMRequestConfig {
-    std::string client;
-    std::string model;                          // String model name (works with any provider)
-    std::string functionName = "llm_function";  // Default function name for LLM calls
-    std::string jsonSchema;
-    std::optional<json> schemaObject;  // Structured schema data
-
-    std::optional<float> temperature;  // Optional temperature (filtered by model support)
-    std::optional<int> maxTokens;      // Optional max tokens
-    std::optional<std::vector<void*>> tools;  // Optional tools for function calling (void* to avoid incomplete type issues)
-
-    // Convenience method for any model name
-    void setModel(const std::string& modelName) { model = modelName; }
-
-    std::string getModelString() const { return model; }
-
-    // Add more configuration options as needed (e.g., top_p, stop sequences, etc.)
-
-    std::string toString() const {
-        std::string schemaStr = schemaObject.has_value() ? schemaObject->dump() : jsonSchema;
-        std::string tempStr = temperature.has_value() ? std::to_string(*temperature) : "not set";
-        std::string toolsStr = tools.has_value() ? std::to_string(tools->size()) + " tools" : "no tools";
-        return "LLMRequestConfig { client: " + client + ", model: " + getModelString() +
-               ", functionName: " + functionName + ", schema: " + schemaStr +
-               ", temperature: " + tempStr +
-               ", maxTokens: " + std::to_string(maxTokens.has_value() ? *maxTokens : 0) +
-               ", tools: " + toolsStr + " }";
-    }
-};
-
-struct LLMResponse {
-    json result = json::object();
-    bool success = false;
-    std::string errorMessage;
-    std::string responseId;  // For conversation continuity with OpenAI
-    LLMUsage usage;          // Token usage information
-
-    std::string toString() const {
-        std::string resultString = result.dump(2);
-        return "LLMResponse {\n result: " + resultString +
-               ",\n success: " + (success ? "true" : "false") +
-               ",\n errorMessage: " + errorMessage + ",\n responseId: " + responseId +
-               ",\n usage: " + usage.toString() + "\n}";
-    }
-};
-
-struct LLMRequest {
-    LLMRequest() = delete;
-
-    // Constructor with prompt only
-    LLMRequest(LLMRequestConfig config, std::string prompt, LLMContext context = {},
-               std::string previousResponseId = "")
-        : config(std::move(config)),
-          prompt(std::move(prompt)),
-          context(std::move(context)),
-          previousResponseId(std::move(previousResponseId)) {}
-
-    // Constructor with single context object (convenience)
-    LLMRequest(LLMRequestConfig config, std::string prompt, json contextObject,
-               std::string previousResponseId = "")
-        : config(std::move(config)),
-          prompt(std::move(prompt)),
-          context({std::move(contextObject)}),
-          previousResponseId(std::move(previousResponseId)) {}
-
-    LLMRequestConfig config;
-    std::string prompt;  // The main task/prompt (what to do) - maps to instructions
-    LLMContext context;  // Context data (vector of generic objects) - maps to inputValues
-    std::string previousResponseId;  // For conversation continuity
-
-    // Utility methods
-    std::string instructions() const { return prompt; }  // For OpenAI mapping
-
-    std::string toString() const {
-        std::string contextString = "[";
-        for (size_t i = 0; i < context.size(); ++i) {
-            if (i > 0) contextString += ", ";
-            contextString += context[i].dump();
-        }
-        contextString += "]";
-
-        return "LLMRequest {\n config: " + config.toString() + ",\n prompt: " + prompt +
-               ",\n context: " + contextString + ",\n previousResponseId: " + previousResponseId +
-               "\n}";
-    }
-};
+// Helper functions to work with tools in the generic LLMRequestConfig
+// Declarations - implementations are in OpenAITypes.cpp after tool definitions
+void setTools(LLMRequestConfig& config, const std::vector<ToolVariant>& tools);
+bool hasTools(const LLMRequestConfig& config);
+json getToolsJson(const LLMRequestConfig& config);
 
 /**
  * OpenAI model names as strongly typed enum
@@ -629,18 +525,16 @@ struct OpenAIConfig {
     bool enableDeprecationWarnings = true;
 
     json toJson() const {
-        json j = {
-            {"api_key", apiKey},
-            {"base_url", baseUrl},
-            {"timeout_seconds", timeoutSeconds},
-            {"max_retries", maxRetries},
-            {"enable_deprecation_warnings", enableDeprecationWarnings}
-        };
+        json j = {{"api_key", apiKey},
+                  {"base_url", baseUrl},
+                  {"timeout_seconds", timeoutSeconds},
+                  {"max_retries", maxRetries},
+                  {"enable_deprecation_warnings", enableDeprecationWarnings}};
         if (!organization.empty()) j["organization"] = organization;
         if (!project.empty()) j["project"] = project;
         return j;
     }
-    
+
     static OpenAIConfig fromJson(const json& j) {
         OpenAIConfig config;
         if (j.contains("api_key")) config.apiKey = j["api_key"].get<std::string>();
@@ -649,7 +543,7 @@ struct OpenAIConfig {
         if (j.contains("project")) config.project = j["project"].get<std::string>();
         if (j.contains("timeout_seconds")) config.timeoutSeconds = j["timeout_seconds"].get<int>();
         if (j.contains("max_retries")) config.maxRetries = j["max_retries"].get<int>();
-        if (j.contains("enable_deprecation_warnings")) 
+        if (j.contains("enable_deprecation_warnings"))
             config.enableDeprecationWarnings = j["enable_deprecation_warnings"].get<bool>();
         return config;
     }
@@ -670,7 +564,7 @@ struct ChatMessage {
         }
         return j;
     }
-    
+
     static ChatMessage fromJson(const json& j) {
         ChatMessage msg;
         msg.role = j.at("role").get<std::string>();
@@ -709,7 +603,7 @@ struct ChatCompletionRequest {
         if (user.has_value()) j["user"] = user.value();
         return j;
     }
-    
+
     static ChatCompletionRequest fromLLMRequest(const struct LLMRequest& request);
     struct LLMRequest toLLMRequest() const;
     static ChatCompletionRequest fromJson(const json& j);
@@ -955,19 +849,16 @@ inline ResponseStatus responseStatusFromString(const std::string& str) {
 
 // Close the OpenAI namespace
 
-} // namespace OpenAI
+}  // namespace OpenAI
 
 // Make OpenAI types globally accessible
-using OpenAI::LLMRequestConfig;
-using OpenAI::LLMRequest;
-using OpenAI::LLMResponse;
-using OpenAI::ToolVariant;
 using OpenAI::FunctionCallOutput;
 using OpenAI::McpApprovalResponse;
-using OpenAI::ResponseStatus;
+using OpenAI::OpenAIConfig;
 using OpenAI::ResponsesRequest;
 using OpenAI::ResponsesResponse;
-using OpenAI::OpenAIConfig;
+using OpenAI::ResponseStatus;
+using OpenAI::ToolVariant;
 
 // All structs moved to OpenAI namespace
 
@@ -1037,4 +928,3 @@ inline std::string getRecommendedApiForModel(const std::string& model) {
     }
     return "Unknown";
 }
-
