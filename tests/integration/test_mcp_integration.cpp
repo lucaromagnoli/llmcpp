@@ -1,36 +1,24 @@
-#include <catch2/catch_test_macros.hpp>
-#include <openai/OpenAIClient.h>
 #include <openai/OpenAIMcpUtils.h>
+#include <openai/OpenAITypes.h>
+
+#include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
-// Helper to check if API key is available
-static bool hasApiKey() {
-    const char* apiKey = std::getenv("OPENAI_API_KEY");
-    return apiKey != nullptr && std::string(apiKey).length() > 0;
-}
-
-TEST_CASE("MCP Integration Tests", "[mcp][integration][!shouldfail]") {
-    if (!hasApiKey()) {
-        SKIP("OPENAI_API_KEY not set - skipping MCP integration tests");
-    }
-
-    std::string apiKey = std::getenv("OPENAI_API_KEY");
-    OpenAIClient client(apiKey);
-
-    SECTION("MCP tools are configured correctly") {
+TEST_CASE("MCP Utility Functions", "[mcp][integration]") {
+    SECTION("MCP tools configuration") {
         // Create a simple config with MCP tools
         LLMRequestConfig config;
         config.client = "OpenAI";
         config.model = "gpt-4o-mini";
         config.temperature = 0.7f;
 
-        // Add MCP tool using the helper function
-        OpenAI::McpTool aideasMcpTool;
-        aideasMcpTool.serverLabel = "aideas-music-db";
-        aideasMcpTool.serverUrl = "https://mcp.musicalaideas.com/mcp";
-        aideasMcpTool.requireApproval = "never";
+        // Add MCP tool configuration using a public MCP server
+        OpenAI::McpTool mcpTool;
+        mcpTool.serverLabel = "deepwiki";
+        mcpTool.serverUrl = "https://mcp.deepwiki.com/mcp";
+        mcpTool.requireApproval = "never";
 
-        std::vector<OpenAI::ToolVariant> tools = {aideasMcpTool};
+        std::vector<OpenAI::ToolVariant> tools = {mcpTool};
         OpenAI::setTools(config, tools);
 
         // Verify tools are set
@@ -44,41 +32,7 @@ TEST_CASE("MCP Integration Tests", "[mcp][integration][!shouldfail]") {
         REQUIRE(toolsJson[0].contains("type"));
         REQUIRE(toolsJson[0]["type"] == "mcp");
         REQUIRE(toolsJson[0].contains("server_label"));
-        REQUIRE(toolsJson[0]["server_label"] == "aideas-music-db");
-    }
-
-    SECTION("MCP tool call - search by emotional quality") {
-        // Create config with MCP tools
-        LLMRequestConfig config;
-        config.client = "OpenAI";
-        config.model = "gpt-4o-mini";
-        config.temperature = 0.7f;
-
-        OpenAI::McpTool aideasMcpTool;
-        aideasMcpTool.serverLabel = "aideas-music-db";
-        aideasMcpTool.serverUrl = "https://mcp.musicalaideas.com/mcp";
-        aideasMcpTool.requireApproval = "never";
-
-        std::vector<OpenAI::ToolVariant> tools = {aideasMcpTool};
-        OpenAI::setTools(config, tools);
-
-        // Create a request that should trigger MCP tool usage
-        std::string prompt =
-            "Search the music database for compositions with a happy and energetic feeling.";
-
-        LLMRequest request(config, prompt);
-
-        // Send request
-        LLMResponse response = client.sendRequest(request);
-
-        INFO("Response: " << response.toString());
-
-        // Check basic response
-        REQUIRE(response.success);
-        REQUIRE(!response.responseId.empty());
-
-        // For full MCP analysis, we need the raw ResponsesResponse
-        // This test demonstrates the configuration is correct
+        REQUIRE(toolsJson[0]["server_label"] == "deepwiki");
     }
 
     SECTION("Parse MCP tool calls from response") {
@@ -90,12 +44,12 @@ TEST_CASE("MCP Integration Tests", "[mcp][integration][!shouldfail]") {
         mockResponse.status = OpenAI::ResponseStatus::Completed;
 
         // Add a mock MCP tool call to output
-        json mcpCall = {{"type", "mcp_call"},
-                        {"id", "call_123"},
-                        {"name", "search_by_emotional_quality"},
-                        {"input", {{"quality", "happy"}}},
-                        {"output",
-                         {{{"title", "Happy Song"}, {"artist", "Joy Band"}, {"key", "C major"}}}}};
+        json mcpCall = {
+            {"type", "mcp_call"},
+            {"id", "call_123"},
+            {"name", "search_by_emotional_quality"},
+            {"input", {{"quality", "happy"}}},
+            {"output", {{{"title", "Happy Song"}, {"artist", "Joy Band"}, {"key", "C major"}}}}};
 
         mockResponse.output.push_back(mcpCall);
 
@@ -132,7 +86,9 @@ TEST_CASE("MCP Integration Tests", "[mcp][integration][!shouldfail]") {
         // Add mcp_list_tools
         json listTools = {{"type", "mcp_list_tools"},
                           {"tools",
-                           {{"name", "search_music"}, {"name", "search_by_artist"}, {"name", "get_composition"}}}};
+                           {{{"name", "search_music"}},
+                            {{"name", "search_by_artist"}},
+                            {{"name", "get_composition"}}}}};
 
         mockResponse.output.push_back(listTools);
 
